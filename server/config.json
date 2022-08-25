@@ -1,0 +1,9 @@
+{
+    "headlessPlayer": {
+        "resultsDir": "/home/akram/ucalgary/research/runs",
+        "resultDirPrefix": "results",
+        "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
+    },
+    "tempDir": "/home/akram/ucalgary/research/ramdisk",
+    "vmafDir": "/home/akram/ucalgary/research/video-lab/server/third_party/vmaf"
+}

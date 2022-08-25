@@ -1,0 +1,29 @@
+.logo {
+    height: 32px;
+    margin: 16px;
+    color: white;
+    line-height: 32px;
+    font-size: 20px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.215, 0.61, 0.355, 1);
+    text-align: center;
+
+    &.collapsed {
+        .title {
+            color: transparent;
+        }
+    }
+
+    .title {
+        margin-left: 10px;
+        color: white;
+    }
+}
+
+.site-layout-sub-header-background {
+    background: #fff;
+}
+
+.site-layout-background {
+    background: #fff;
+}

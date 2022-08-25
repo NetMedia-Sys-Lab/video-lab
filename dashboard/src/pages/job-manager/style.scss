@@ -1,0 +1,15 @@
+.jobs-table {
+  width: 100%;
+  tr {
+    cursor: pointer;
+    td {
+      padding: 2px 10px;
+    }
+  }
+  tr:hover {
+    background-color: aliceblue;
+  }
+  tr.selected {
+    background-color: #68c8f8;
+  }
+}

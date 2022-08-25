@@ -1,0 +1,15 @@
+flask[async]
+flask-restful
+flask-cors
+matplotlib
+pandas
+flask_socketio
+simple-websocket
+
+typing-extensions
+jsonpath-ng
+experiments-common
+watchdog
+ffmpeg-python
+fs
+docker

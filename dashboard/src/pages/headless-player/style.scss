@@ -1,0 +1,79 @@
+.plotter-plot {
+  .ant-card-body {
+    padding: 0;
+  }
+  .rule {
+    height: 90%;
+    position: absolute;
+    border-right: 1px dotted #000;
+    text-align: right;
+  }
+}
+
+.logs {
+  table {
+    border-collapse: collapse;
+    td {
+      padding: 0px 3px !important;
+      pre {
+        margin: 0;
+      }
+    }
+  }
+}
+
+svg {
+  pointer-events: all;
+  .axis-grid line {
+    stroke: rgba(221, 238, 255, 0.5);
+  }
+}
+
+#new-run-form .ant-btn {
+  margin-right: 8px;
+}
+
+.vlab-table {
+  width: 100%;
+  th {
+    text-align: left;
+  }
+  td {
+    padding: 0 3px;
+    pre {
+      margin: 0;
+    }
+  }
+  th.shrink, td.shrink {
+    width:0.1%;
+    white-space: nowrap;
+  }
+}
+
+.plot-drawer-wrapper {
+  position: relative;
+
+  .ant-collapse-content-box {
+    padding: 0;
+  }
+
+  .ant-tabs-content-holder {
+    padding: 0 16px 16px 16px;
+  }
+
+  .plot-settings {
+    width: 100%;
+    tr {
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    td {
+      padding: 0 7px;
+      border-right: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    td:first-child {
+      padding: 7px 7px;
+      width:0.1%;
+      white-space: nowrap;
+    }
+  }
+}
