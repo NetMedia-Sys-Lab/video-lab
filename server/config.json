@@ -1,6 +1,6 @@
 {
     "headlessPlayer": {
-        "resultsDir": "/home/akram/ucalgary/research/nfs/runs",
+        "resultsDir": "/var/nfs/runs",
         "resultDirPrefix": "results"
     },
     "jobManager": {

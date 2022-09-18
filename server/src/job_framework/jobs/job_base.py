@@ -77,7 +77,7 @@ class JobBase:
     async def wait_for_output(self):
         await self.wait_until_done()
         if self.error is not None:
-            raise self.error
+            raise Exception(self.error)
         elif self.status != JobStatus.SUCCESSFUL:
             raise Exception(f"Job status {self.status}, error is unknown")
         elif self.output is not None:
