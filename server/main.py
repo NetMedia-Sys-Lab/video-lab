@@ -37,7 +37,7 @@ def main():
     args = parser.parse_args()
 
     if args.workers:
-        remote_job_manager_queues = RemoteJobManagerQueues(CONFIG['jobManager']['jobManagerServerUrl'])
+        remote_job_manager_queues = RemoteJobManagerQueues(CONFIG['jobManager']['jobManagerServerUrl'], loop)
         for worker_id in range(1, args.workers+1):
             worker = JobWorker(worker_id, remote_job_manager_queues, loop)
             worker.start()

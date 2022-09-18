@@ -1,3 +1,4 @@
+import asyncio
 from typing import Dict
 
 JOB_CLASSES = {}
@@ -16,6 +17,7 @@ def to_job(job_dict: Dict, cache={}, loop=None):
     else:
         print('Cache Miss job')
         t = job_dict['type']
+        asyncio.set_event_loop(loop)
         if t in JOB_CLASSES:
             job = JOB_CLASSES[t](**job_dict)
             return job

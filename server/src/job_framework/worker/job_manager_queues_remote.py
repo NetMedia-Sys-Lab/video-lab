@@ -1,3 +1,4 @@
+from asyncio import AbstractEventLoop
 import traceback
 import requests
 from time import sleep, time
@@ -6,9 +7,11 @@ from src.job_framework.util import to_job
 
 
 class RemoteJobManagerQueues:
+    loop: AbstractEventLoop
 
-    def __init__(self, url_base: str) -> None:
+    def __init__(self, url_base: str, loop: AbstractEventLoop) -> None:
         self.url_base = url_base
+        self.loop = loop
 
     def get(self, q_name) -> JobBase:
         ser = None
@@ -25,7 +28,7 @@ class RemoteJobManagerQueues:
                 ser = res.json()
             except:
                 print(traceback.format_exc())
-        return to_job(ser)
+        return to_job(ser, loop=self.loop)
 
     def put(self, q_name, job: JobBase):
         res = requests.put(f"{self.url_base}/job-manager/queue/{q_name}", json=job.serialize())
