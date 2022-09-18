@@ -61,8 +61,8 @@ class Codec:
             stderr=sys.stderr
         )
 
-    @register_python_job()
     @staticmethod
+    @register_python_job()
     def ffprobe_get_frames(video_path):
         return subprocess.check_output([
             "ffprobe", "-v", "quiet", "-show_frames", "-of", "json",
@@ -91,8 +91,8 @@ class Codec:
             # yield join(self.run.downloads_dir, seg_name), join(self.run.downloads_dir, init_name)
             yield (quality, index)
 
-    @register_python_job()
     @staticmethod
+    @register_python_job()
     def get_original_segment(quality: int, index: int, run_id: str, temp_dir: str):
         run = get_run(run_id)
         seg_path = join(run.original_video_dir,
@@ -110,8 +110,8 @@ class Codec:
                 [init_path, seg_path], enc_path, "scale=1920:1080")
         return enc_path
 
-    @register_python_job()
     @staticmethod
+    @register_python_job()
     def get_encoded_segment(quality: int, index: int, run_id: str):
         run = get_run(run_id)
         enc_path = join(run.segments_dir,
