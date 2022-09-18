@@ -1,6 +1,8 @@
+from logging import Logger
+import threading
 from abc import ABC, abstractmethod
 from functools import cache
-from threading import Thread
+from threading import Thread, Timer
 from time import sleep, time
 from typing import Dict, List, Callable, Any
 
@@ -12,9 +14,6 @@ class StateUpdateListener(ABC):
     @abstractmethod
     def state_updated(self, key, value):
         pass
-
-
-import threading
 
 
 def debounce(wait_time):
@@ -36,7 +35,8 @@ def debounce(wait_time):
                 reduce_time = time() - debounced._timer_start_time
 
             # after wait_time, call the function provided to the decorator with its arguments
-            debounced._timer = threading.Timer(max(0, wait_time - reduce_time), call_function)
+            debounced._timer = threading.Timer(
+                max(0, wait_time - reduce_time), call_function)
             debounced._timer.start()
             debounced._timer_start_time = time()
 
@@ -47,23 +47,27 @@ def debounce(wait_time):
 
 
 class StateManager(StateUpdateListener):
+    app: Flask
+    socketio: SocketIO
+    log: Logger
+    states: Dict[str, Any]
+    is_updated: Dict[str, bool]
+    listeners: Dict[str, Dict[str, List[Callable]]]
 
-    def __init__(self, app, socketio, default_states={}):
-        self.log = app.logger
+    def __init__(self, app: Flask, socketio: SocketIO, default_states={}):
+        self.app = app
         self.socketio = socketio
+        self.log = app.logger
         self.states = default_states
-        self.is_updated: Dict[str, bool] = {}
-        self.listeners: Dict[str, Dict[str, List[Callable]]] = {}
-        pass
+        self.is_updated = {}
+        self.listeners = {}
 
-    @debounce(0.1)
     def state_updated(self, key, value, broadcast=False):
         self.states[key] = value
         self.is_updated[key] = True
         if broadcast:
             self.broadcast_state(key)
 
-    @debounce(0.1)
     def state_updated_partial(self, key: str, path: str, value: Any, broadcast=False):
         json_keys = self.parse_json_keys(path)
         self.set_nested_item(self.states[key], json_keys, value)
@@ -83,7 +87,6 @@ class StateManager(StateUpdateListener):
                 obj[key] = {}
             obj = obj[key]
         obj[map_list[-1]] = val
-        return data_dict
 
     def add_listener(self, sid, key, callback: Callable):
         if sid not in self.listeners:
@@ -98,48 +101,47 @@ class StateManager(StateUpdateListener):
         if sid in self.listeners:
             self.listeners.pop(sid)
 
+    @debounce(0.1)
     def broadcast_state(self, key):
         self.is_updated[key] = False
         for sid, sid_listeners in list(self.listeners.items()):
             for listener in sid_listeners.get(key, []):
                 listener(key, self.states[key])
 
-    def check_state_updated(self):
-        while True:
-            for key, is_updated in self.is_updated.items():
-                if not is_updated:
-                    continue
-                self.broadcast_state(key)
-            sleep(1)
+    # def check_state_updated(self):
+    #     for key, is_updated in self.is_updated.items():
+    #         if not is_updated:
+    #             continue
+    #         self.broadcast_state(key)
 
-    def start_background(self):
-        Thread(target=self.check_state_updated, daemon=True).start()
+    # def start_background(self):
+    #     Timer(1, self.check_state_updated).start()
 
 
-def init_routes(*, app: Flask, socketio: SocketIO, state_manager: StateManager):
-    @socketio.on('state_sub')
-    def handle_state(data):
-        key = data["key"]
-        sid = request.sid
-        app.logger.info(f'Client {sid} subscribed to state: {key}')
+    def init_routes(self):
+        @self.socketio.on('state_sub')
+        def handle_state(data):
+            key = data["key"]
+            sid = request.sid
+            self.log.info(f'Client {sid} subscribed to state: {key}')
 
-        def on_state_update(key, value):
-            socketio.emit('state_update', {
-                "key": key,
-                "value": value
-            }, room=sid)
+            def on_state_update(key, value):
+                self.socketio.emit('state_update', {
+                    "key": key,
+                    "value": value
+                }, room=sid)
 
-        state_manager.add_listener(sid, key, on_state_update)
+            self.add_listener(sid, key, on_state_update)
 
-    @socketio.on('disconnect')
-    def handle_disconnect():
-        sid = request.sid
-        app.logger.info(f'Client {sid} disconnect')
-        state_manager.remove_listeners(sid)
+        @self.socketio.on('disconnect')
+        def handle_disconnect():
+            sid = request.sid
+            self.log.info(f'Client {sid} disconnect')
+            self.remove_listeners(sid)
 
-    @app.post('/state/<key>')
-    def _post_update_state(key: str):
-        path = str(request.json['path'])
-        value = str(request.json['value'])
-        broadcast = bool(request.json['value'])
-        state_manager.state_updated_partial(key, path, value, broadcast)
+        @self.app.post('/state/<key>')
+        def _post_update_state(key: str):
+            path = str(request.json['path'])
+            value = str(request.json['value'])
+            broadcast = bool(request.json['value'])
+            self.state_updated_partial(key, path, value, broadcast)

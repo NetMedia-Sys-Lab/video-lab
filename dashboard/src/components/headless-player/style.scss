@@ -1,0 +1,27 @@
+.plot-drawer-wrapper {
+  position: relative;
+
+  .ant-collapse-content-box {
+    padding: 0;
+  }
+
+  .ant-tabs-content-holder {
+    padding: 0 16px 16px 16px;
+  }
+
+  .plot-settings {
+    width: 100%;
+    tr {
+      border: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    td {
+      padding: 0 7px;
+      border-right: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    td:first-child {
+      padding: 7px 7px;
+      width:0.1%;
+      white-space: nowrap;
+    }
+  }
+}

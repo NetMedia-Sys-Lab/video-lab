@@ -1,0 +1,20 @@
+.job-list-drawer {
+    .ant-drawer-body {
+        padding: 0;
+    }
+    li {
+        cursor: pointer;
+    }
+    li.failed {
+        color: red;
+    }
+    li.successful {
+        color: green;
+    }
+    li:hover {
+      background-color: aliceblue;
+    }
+    li:active, li.selected {
+      background-color: #68c8f8;
+    }
+}

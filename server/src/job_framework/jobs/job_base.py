@@ -2,52 +2,76 @@ import asyncio
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import cached_property
-from typing import Optional
+import json
+from pprint import pprint
+import traceback
+from typing import Any, Dict, List, Optional, Type, TypedDict, Union
+from os.path import join
+
+config_file = open("config.json")
+CONFIG = json.load(config_file)
+config_file.close()
 
 
-class JobStatus(Enum):
-    INITIALIZED = 0
-    SCHEDULED = 1
-    RUNNING = 2
-    SUCCESSFUL = 3
-    CANCELLED = 4
-    FAILED = 5
+class JobStatus:
+    INITIALIZED = "INITIALIZED"
+    SCHEDULED = "SCHEDULED"
+    RUNNING = "RUNNING"
+    SUCCESSFUL = "SUCCESSFUL"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
+    
 
+class JobBase:
+    __done__: asyncio.Event
 
-class JobBase(ABC):
-    job_id: str
-    status: JobStatus
-    error: Optional[Exception]
-    done: asyncio.Event
+    type: str = None
+    job_id: str = None
+    status: str = None
+    error: str = None
+    output: Union[str, int, float, bool, Dict, List] = None
+    finished_at: float = None
+    scheduled_at: float = None
+    run_at: float = None
+    config: Dict = None
 
-    def __init__(self, *, job_id: str):
-        self.job_id = job_id
-        self.status = JobStatus.INITIALIZED
-        self.done = asyncio.Event()
-        self.error = None
+    def __init__(self, *args, **config):
+        self.type = self.__class__.type
+        for k,v in config.items():
+            self.__setattr__(k,v)
+        self.__done__ = asyncio.Event()
 
-    @abstractmethod
     def run(self):
-        pass
+        raise NotImplementedError("Cannot run JobBase")
 
     @cached_property
     def job_name(self):
-        return f"{self.__class__.__name__}-{self.job_id}"
+        return f"{self.job_id}_{self.__class__.__name__}"
 
-    @property
-    def output(self):
-        return None
+    @cached_property
+    def job_dir(self):
+        return join(CONFIG["jobManager"]["jobsDir"], self.job_id)
 
-    # async def done(self, job_done_threadsafe: threading.Event):
-    #     self.done.set()
-    #     job_done_threadsafe.set()
-    #     print("Job Done")
+    @cached_property
+    def job_pkl(self):
+        return join(self.job_dir, "job.pkl")
+
+    @cached_property
+    def stdouterr_path(self):
+        return join(self.job_dir, "stdouterr.txt")
+
+    def try_read(self, file_path):
+        try:
+            with open(file_path) as f:
+                return f.read()
+        except Exception as e:
+            return f"Failed to read {file_path}: {e}"
 
     def is_done(self) -> bool:
-        return self.done.is_set()
+        return self.__done__.is_set()
 
     async def wait_until_done(self) -> JobStatus:
-        await self.done.wait()
+        await self.__done__.wait()
         return self.status
 
     async def wait_for_output(self):
@@ -56,17 +80,44 @@ class JobBase(ABC):
             raise self.error
         elif self.status != JobStatus.SUCCESSFUL:
             raise Exception(f"Job status {self.status}, error is unknown")
-        return self.output
+        elif self.output is not None:
+            return self.output
+        else:
+            return self.try_read(self.stdouterr_path)
 
-    def job_dict(self):
+    def details_short(self):
         return {
+            "type": self.type,
             "job_name": self.job_name,
             "job_id": self.job_id,
-            "status": str(self.status)
+            "status": str(self.status),
+            "scheduled_at": self.scheduled_at,
+            "run_at": self.run_at,
+            "finished_at": self.finished_at
         }
 
     def details(self):
         return {
-            **self.job_dict(),
-            "error": str(self.error)
+            **self.details_short(),
+            "error": self.error,
+            "stdouterr": self.try_read(self.stdouterr_path),
+            'config': self.config,
+            'output': self.output
         }
+    
+    def serialize(self):
+        def is_internal(s: str):
+            return s.startswith('__') and s.endswith('__')
+        ret = {k:v for k,v in self.__dict__.items() if not is_internal(k)}
+        # print(ret.keys())
+        if self.__done__.is_set():
+            ret['done'] = True
+        return ret
+    
+    def deserialize(self, job_dict: Dict, loop: asyncio.AbstractEventLoop = None):
+        # pprint(job_dict)
+        for k,v in job_dict.items():
+            self.__setattr__(k,v)
+        if job_dict.get('done'):
+            if loop:
+                loop.call_soon_threadsafe(self.__done__.set)

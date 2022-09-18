@@ -23,7 +23,7 @@ class RunsWatcher(FileSystemEventHandler):
     state_manager: StateManager
     __log_readers: Dict[str, ExpReader] = {}
 
-    def __init__(self, state_manager: StateManager, app: Flask):
+    def __init__(self, app: Flask, state_manager: StateManager):
         self.app = app
         self.state_manager = state_manager
         self.results_dir = CONFIG['headlessPlayer']['resultsDir']
@@ -39,6 +39,7 @@ class RunsWatcher(FileSystemEventHandler):
                         self.state_manager.state_updated_partial("run_states", f"{run_id}.progress", 1, False)
                     else:
                         self.tail_exp_logs(join(path, name), False)
+        self.state_manager.broadcast_state('run_states')
         observer = Observer()
         observer.schedule(self, self.results_dir, recursive=True)
         observer.start()

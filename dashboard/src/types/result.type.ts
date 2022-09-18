@@ -26,6 +26,7 @@ export declare type RunConfig =  {
     bufferSetting: string
     bwProfile: string
     attempt: number
+    calculateQuality: boolean
 
     serverImage?: string
     serverLogLevel?: string
@@ -39,4 +40,8 @@ export declare type LogLineType = {
     time: number
     tags: string[]
     text: string
+}
+
+export type RunsFilterType = {
+    runId?: string
 }

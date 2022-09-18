@@ -1,0 +1,22 @@
+.plotter-plot {
+    .ant-card-body {
+      padding: 0;
+    }
+    .rule {
+      height: 90%;
+      position: absolute;
+      border-right: 1px dotted #000;
+      text-align: right;
+    }
+  }
+  
+  svg {
+    pointer-events: all;
+    .axis-grid line {
+      stroke: rgba(221, 238, 255, 0.5);
+    }
+
+    rect:hover {
+      border: 1px solid black
+    }
+  }

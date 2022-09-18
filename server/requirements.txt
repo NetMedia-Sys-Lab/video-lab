@@ -13,3 +13,5 @@ watchdog
 ffmpeg-python
 fs
 docker
+dill
+requests

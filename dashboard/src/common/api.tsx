@@ -2,14 +2,15 @@ import {useCallback, useEffect, useState} from "react";
 import {LogLineType, RunConfig} from "../types/result.type";
 import {RunDataType} from "../types/run-data.type";
 import io from 'socket.io-client';
-import {KibanaQuery} from "./api.types";
+import {KibanaQuery} from "../types/api.types";
 
 const euc = encodeURIComponent;
 
 // eslint-disable-next-line no-restricted-globals
-const ApiBase = `http://${location.hostname}:3001`;
+export const ApiBase = `http://${location.hostname}:3001`;
 const HeadlessPlayerApi = `${ApiBase}/headless-player`;
-const JobManagerApi = `${ApiBase}/job-manager`;
+export const StaticApi = `${ApiBase}/static/runs`;
+export const JobManagerApi = `${ApiBase}/job-manager`;
 
 // readChunks() reads from the provided reader and yields the results into an async iterable
 function readChunks(reader: ReadableStreamDefaultReader) {
@@ -46,11 +47,12 @@ function readChunks(reader: ReadableStreamDefaultReader) {
     };
 }
 
-function createUseAPI<TParameters extends [...args: any] = [], T1 = any>(apiCallback: (...args: TParameters) => Promise<T1>) {
+export function createUseAPI<TParameters extends [...args: any] = [], T1 = any>(apiCallback: (...args: TParameters) => Promise<T1>) {
     return (...args: TParameters) => {
         const [isLoading, setIsLoading] = useState<boolean>(false);
         const [error, setError] = useState<any>(null);
         const [data, setData] = useState<T1 | undefined>(undefined);
+        const [lastRefreshed, setLastRefreshed] = useState<number>();
 
         const execute = async () => {
             try {
@@ -59,6 +61,7 @@ function createUseAPI<TParameters extends [...args: any] = [], T1 = any>(apiCall
                 setIsLoading(false);
                 setData(data);
                 setError(null)
+                setLastRefreshed(Date.now())
                 return data;
             } catch (e) {
                 setIsLoading(false);
@@ -67,12 +70,17 @@ function createUseAPI<TParameters extends [...args: any] = [], T1 = any>(apiCall
                 throw e;
             }
         }
+        
+        useEffect(() => {
+            execute();
+        }, [...args])
 
         return {
             isLoading,
             error,
             data,
-            refresh: useCallback(execute, []), // to avoid infinite calls when inside a `useEffect`
+            lastRefreshed,
+            refresh: useCallback(execute, [...args]), // to avoid infinite calls when inside a `useEffect`
         };
     }
 }
@@ -85,6 +93,7 @@ export const useGetAllResults = createUseAPI<[], { results: RunConfig[] }>(async
 export const useGetRunsData = createUseAPI<[runIds: string[]],
     { [runKey: string]: RunDataType }>
 (async (runIds: string[]) => {
+    console.log("Fetching Run Data for ", runIds);
     const response = await fetch(`${HeadlessPlayerApi}/runs/data?runs=${euc(runIds.join(','))}`);
     return await response.json();
 })
@@ -97,7 +106,7 @@ export const deleteRuns = async (runIds: string[]) => {
     return await response.json();
 }
 
-export const useStateSocket = (key: string, defaultState: any) => {
+export const useStateSocket = function<T>(key: string, defaultState: T) {
     const [isConnected, setIsConnected] = useState(false);
     const [state, setState] = useState(defaultState);
 
@@ -164,8 +173,8 @@ export const openPcapFile = async (files: string[]) => {
     return await response.json();
 }
 
-export const calculateRunQuality = async (runId: string) => {
-    const response = await fetch(`${HeadlessPlayerApi}/runs/playback-quality?run=${euc(runId)}`);
+export const calculateRunQuality = async (runIds: string[]) => {
+    const response = await fetch(`${HeadlessPlayerApi}/runs/playback-quality?runs=${euc(runIds.join(","))}`);
     return await response.json();
 }
 
@@ -187,9 +196,3 @@ export const makeKibanaLink = (options: KibanaQuery) =>
     `http://localhost:5601/app/logs/stream?logFilter=(language:kuery,query:${euc(`'${makeKibanaQuery(options)}'`)})`;
 
 export const playbackVideoUrl = (runId: string) => `${ApiBase}/static/runs/${runId}/downloaded/playback.mp4`
-
-
-export const getJobDetails = async (jobId: string) => {
-    const response = await fetch(`${JobManagerApi}/job/details?job=${euc(jobId)}`);
-    return await response.json();
-}

@@ -4,64 +4,64 @@ from functools import cached_property
 from io import BytesIO
 from pprint import pprint
 from sys import stdout
-from typing import Union
+import sys
+from typing import List, Tuple, TypedDict, Union
 
 import docker
 from docker.models.containers import Container
 from docker.types import Mount
+from src.job_framework.util import job_class
 
 from src.job_framework.jobs.job_base import JobBase
 
 
-@dataclass
-class DockerJobConfig:
+
+class DockerJobConfig(TypedDict):
     image: str
-    mounts: list[Union[tuple[str, str], str]]
-    args: list[str]
+    mounts: List[Union[Tuple[str, str], str]]
+    args: List[str]
 
-
+@job_class
 class DockerJob(JobBase):
+    type = "DockerJob"
     config: DockerJobConfig
-    stdout: str
-    stderr: str
 
-    def __init__(self, config: DockerJobConfig, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.stdout = ""
-        self.stderr = ""
-        self.config = config
+    def __init__(self, *, config: DockerJobConfig, **kwargs):
+        super().__init__(config=config, **kwargs)
 
     def run(self):
         client = docker.from_env()
         mounts = []
-        for mount in self.config.mounts:
+        for mount in self.config['mounts']:
             if isinstance(mount, str):
                 mounts.append(Mount(mount, mount, 'bind'))
             else:
                 mounts.append(Mount(mount[1], mount[0], 'bind'))
         try:
             container: Container = client.containers.run(
-                self.config.image,
+                self.config['image'],
                 mounts=mounts,
                 auto_remove=False,
                 name=self.job_name,
-                command=self.config.args,
+                command=self.config['args'],
                 detach=True
             )
             ret = container.wait()
-            self.stdout = container.logs(stdout=True, stderr=False)
-            self.stderr = container.logs(stdout=False, stderr=True)
+            stdout = container.logs(stdout=True, stderr=False)
+            stderr = container.logs(stdout=False, stderr=True)
+            sys.stdout.write(stdout.decode())
+            sys.stderr.write(stderr.decode())
+            sys.stdout.flush()
+            sys.stderr.flush()
             container.remove()
             if ret['StatusCode'] != 0:
-                raise Exception(f"Docker container {self.job_name} existed with status code {ret}")
+                raise Exception(
+                    f"Docker container {self.job_name} existed with status code {ret}")
+            self.output = stdout.decode()
+
         except Exception as e:
             raise e
 
-    @property
-    def output(self):
-        return self.stdout
-
     @cached_property
     def job_name(self):
-        return f"DockerJob_{self.config.image.rsplit('/', 1)[-1].split(':', 1)[0]}_{self.job_id}"
-
+        return f"{self.job_id}_DockerJob_{self.config['image'].rsplit('/', 1)[-1].split(':', 1)[0]}"

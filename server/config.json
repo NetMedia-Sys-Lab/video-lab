@@ -1,7 +1,12 @@
 {
     "headlessPlayer": {
         "resultsDir": "/home/akram/ucalgary/research/runs",
-        "resultDirPrefix": "results",
+        "resultDirPrefix": "results"
+    },
+    "jobManager": {
+        "jobsDir": "/home/akram/ucalgary/research/ramdisk/jobs"
+    },
+    "dataset": {
         "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
     },
     "tempDir": "/home/akram/ucalgary/research/ramdisk",
