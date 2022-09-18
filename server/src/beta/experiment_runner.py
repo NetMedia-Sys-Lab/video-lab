@@ -19,10 +19,10 @@ from src.job_framework.jobs.job_python import PythonJob, register_python_job
 
 from src.state_manager import StateManager
 
-BASE_DIR = Path(os.path.dirname(os.path.realpath(__file__)) +
-                "../../../../../").resolve()
-print(BASE_DIR)
 
+config_file = open("config.json")
+CONFIG = json.load(config_file)
+config_file.close()
 
 network_ids: Queue[int] = Queue()
 for i in range(1, 255):
@@ -71,7 +71,7 @@ def docker_compose_up(run_config: RunConfig):
     try:
         project_name = f"{int(time()*1000000)}_beta-emulator-quic"
         proc = subprocess.Popen(
-            f"docker compose -f {BASE_DIR}/beta-emulator-quic/docker-compose.yml -p {project_name} up --abort-on-container-exit",
+            f"docker compose -f {CONFIG['headlessPlayer']['dockerCompose']} -p {project_name} up --abort-on-container-exit",
             shell=True,
             stderr=sys.stderr,
             stdout=sys.stdout,
@@ -155,7 +155,7 @@ class ExperimentRunner:
 
         for config in configs:
             config['runId'], config['runDir'] = self.make_run_id(
-                f"{BASE_DIR}/runs/{config['resultId']}"
+                f"{CONFIG['headlessPlayer']['resultsDir']}/{config['resultId']}"
                 f"/run_{config['bwProfile']}_{config['bufferSetting']}_{config['codec']}_{config['video']}_{config['length']}sec_"
                 f"{'beta' if config['beta'] else 'nonbeta'}_{config['protocol']}"
             )
@@ -190,9 +190,9 @@ class ExperimentRunner:
             bw_profile_name = run_config['bwProfile'].split('/')[-1]
             env_name = run_config['env'].split('/')[-1]
 
-            check_call(["cp", f"{BASE_DIR}/beta/scripts/expr/bandwidth/{bw_profile_name}",
+            check_call(["cp", f"{CONFIG['headlessPlayer']['profilesPath']}/{bw_profile_name}",
                         f"{run_config['runDir']}/{bw_profile_name}"])
-            check_call(["cp", f"{BASE_DIR}/beta-emulator-quic/dash_emulator_quic/resources/{env_name}",
+            check_call(["cp", f"{CONFIG['headlessPlayer']['envsPath']}/{env_name}",
                         f"{run_config['runDir']}/{env_name}"])
             check_call(["mkdir", join(run_config['runDir'], 'downloaded')])
             if config['serverLogLevel'] == 'debug':
