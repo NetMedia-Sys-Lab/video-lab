@@ -189,9 +189,9 @@ class ExperimentRunner:
             bw_profile_name = run_config['bwProfile'].split('/')[-1]
             env_name = run_config['env'].split('/')[-1]
 
-            check_call(["cp", f"{CONFIG['headlessPlayer']['profilesPath']}/{bw_profile_name}",
+            check_call(["cp", f"{CONFIG['headlessPlayer']['profilesDir']}/{bw_profile_name}",
                         f"{run_config['runDir']}/{bw_profile_name}"])
-            check_call(["cp", f"{CONFIG['headlessPlayer']['envsPath']}/{env_name}",
+            check_call(["cp", f"{CONFIG['headlessPlayer']['envsDir']}/{env_name}",
                         f"{run_config['runDir']}/{env_name}"])
             check_call(["mkdir", join(run_config['runDir'], 'downloaded')])
             if config['serverLogLevel'] == 'debug':
