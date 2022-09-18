@@ -1,6 +1,6 @@
 {
     "headlessPlayer": {
-        "resultsDir": "/home/akram/ucalgary/research/runs",
+        "resultsDir": "/home/akram/ucalgary/research/nfs/runs",
         "resultDirPrefix": "results"
     },
     "jobManager": {
@@ -10,6 +10,5 @@
     "dataset": {
         "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
     },
-    "tempDir": "/home/akram/ucalgary/research/ramdisk",
     "vmafDir": "/home/akram/ucalgary/research/video-lab/server/third_party/vmaf"
 }

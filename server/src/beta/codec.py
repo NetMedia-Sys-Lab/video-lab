@@ -93,7 +93,7 @@ class Codec:
 
     @staticmethod
     @register_python_job()
-    def get_original_segment(quality: int, index: int, run_id: str, temp_dir: str):
+    def get_original_segment(quality: int, index: int, run_id: str):
         run = get_run(run_id)
         seg_path = join(run.original_video_dir,
                         f"chunk-stream{quality}-{index:05d}.m4s")
@@ -134,14 +134,14 @@ class Codec:
         return playback_path
 
     
-    async def calculate_vmaf_for_segment(self, quality: int, index: int, temp_dir: str):
+    async def calculate_vmaf_for_segment(self, quality: int, index: int):
         output_file = join(self.run.vmaf_dir, f"vmaf-stream{quality}-{index:05d}.json")
         if exists(output_file):
             with open(output_file) as f:
                 return json.load(f)
         else:
             dis_file = await self.job_manager.run_with_output(self.get_encoded_segment, quality, index, str(self.run))
-            ref_file = await self.job_manager.run_with_output(self.get_original_segment, quality, index, str(self.run), temp_dir=temp_dir)
+            ref_file = await self.job_manager.run_with_output(self.get_original_segment, quality, index, str(self.run))
             docker_job: DockerJob = self.job_manager.schedule(DockerJob(
                 config={
                     'image': "jrottenberg/ffmpeg:4.4-ubuntu",
@@ -173,17 +173,16 @@ class Codec:
 
     async def calcualte_vmaf_for_segments(self):
         print("Calculating VMAF")
-        with TempFS(auto_clean=True, temp_dir=CONFIG['tempDir']) as temp_dir:
-            segments = list(self.get_downloaded_segments())
-            tasks = []
-            for quality, index in segments:
-                tasks.append(self.calculate_vmaf_for_segment(quality, index, temp_dir.root_path))
-            print("Scheduling VMAF for segments")
-            await asyncio.gather(*tasks)
-            print("Vmaf calculated")
-            return {
-                "vmaf": self.run.vmaf
-            }
+        segments = list(self.get_downloaded_segments())
+        tasks = []
+        for quality, index in segments:
+            tasks.append(self.calculate_vmaf_for_segment(quality, index))
+        print("Scheduling VMAF for segments")
+        await asyncio.gather(*tasks)
+        print("Vmaf calculated")
+        return {
+            "vmaf": self.run.vmaf
+        }
 
     async def calculate_stalls_for_segments(self):
         print("Calculating micro stalls")
