@@ -39,7 +39,7 @@ class JobWorker(Thread):
                 self.queues.put('successful', job)
             except Exception as e:
                 job.status = JobStatus.FAILED
-                job.error = "".join(traceback.format_exception(e))
+                job.error = "".join(traceback.format_exc())
                 job.finished_at = time()
                 job.__done__.set()
                 self.queues.put('failed', job)
