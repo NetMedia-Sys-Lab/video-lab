@@ -77,7 +77,6 @@ def docker_compose_up(run_config: RunConfig):
             stdout=sys.stdout,
             env={
                 **{k: str(v) for k, v in run_config.items()},
-                'BASE_DIR': BASE_DIR,
                 'NETWORK_ID': str(int(network_id)),
                 'UID': str(os.getuid())
             }
