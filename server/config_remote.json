@@ -11,7 +11,7 @@
         "jobManagerServerUrl": "http://localhost:3001"
     },
     "dataset": {
-        "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
+        "datasetDir": "/var/nfs/dataset"
     },
     "vmafDir": "/var/nfs/video-lab/server/third_party/vmaf",
     "SSLKEYLOGFILE": "/var/nfs/certs/ssl_keylog.txt"
