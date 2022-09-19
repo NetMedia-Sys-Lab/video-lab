@@ -149,7 +149,7 @@ class ExperimentRunner:
         configs = multiply(
             configs, [runs_config['calculateVmaf']], 'calculateVmaf')
         configs = multiply(configs, runs_config.get(
-            'serverImages', ['research_aioquic:latest']), 'serverImage')
+            'serverImages', ['server_aioquic:latest']), 'serverImage')
 
         configs = list(
             filter(lambda c: c['beta'] or c['protocol'] != "quic", configs))
