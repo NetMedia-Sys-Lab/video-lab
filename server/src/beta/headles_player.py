@@ -90,6 +90,7 @@ class HeadlessPlayerApi:
             #     args=(await_tasks,),
             #     daemon=True).start()
             # asyncio.run_coroutine_threadsafe(await_tasks(), self.loop)
+            asyncio.set_event_loop(self.loop)
             for run_id in run_ids:
                 self.job_manager.schedule(PythonJob(config={
                     'callback': Codec.calculate_quality.__name__,
