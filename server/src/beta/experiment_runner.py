@@ -79,7 +79,8 @@ def docker_compose_up(run_config: RunConfig):
                 **{k: str(v) for k, v in run_config.items()},
                 'NETWORK_ID': str(int(network_id)),
                 'UID': str(os.getuid()),
-                'SSLKEYLOGFILE': CONFIG['SSLKEYLOGFILE']
+                'SSLKEYLOGFILE': CONFIG['SSLKEYLOGFILE'],
+                'DATASET_DIR': CONFIG['dataset']['datasetDir']
             }
         )
         proc.communicate()
