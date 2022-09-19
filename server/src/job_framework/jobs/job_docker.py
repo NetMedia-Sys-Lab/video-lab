@@ -5,6 +5,7 @@ from io import BytesIO
 from pprint import pprint
 from sys import stdout
 import sys
+from time import time
 from typing import List, Tuple, TypedDict, Union
 
 import docker
@@ -64,4 +65,4 @@ class DockerJob(JobBase):
 
     @cached_property
     def job_name(self):
-        return f"{self.job_id}_DockerJob_{self.config['image'].rsplit('/', 1)[-1].split(':', 1)[0]}"
+        return f"{self.job_id or round(time()*1000)}_DockerJob_{self.config['image'].rsplit('/', 1)[-1].split(':', 1)[0]}"

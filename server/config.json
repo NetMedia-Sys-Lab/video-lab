@@ -1,17 +1,1 @@
-{
-    "headlessPlayer": {
-        "resultsDir": "/var/nfs/runs",
-        "resultDirPrefix": "results",
-        "dockerCompose": "/var/nfs/beta-emulator-quic/docker-compose.yml",
-        "profilesDir": "/var/nfs/beta/scripts/expr/bandwidth",
-        "envsDir": "/var/nfs/beta-emulator-quic/dash_emulator_quic/resources"
-    },
-    "jobManager": {
-        "jobsDir": "/var/nfs/jobs",
-        "jobManagerServerUrl": "http://localhost:3001"
-    },
-    "dataset": {
-        "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
-    },
-    "vmafDir": "/var/nfs/video-lab/server/third_party/vmaf"
-}
+./config_local.json

@@ -78,7 +78,8 @@ def docker_compose_up(run_config: RunConfig):
             env={
                 **{k: str(v) for k, v in run_config.items()},
                 'NETWORK_ID': str(int(network_id)),
-                'UID': str(os.getuid())
+                'UID': str(os.getuid()),
+                'SSLKEYLOGFILE': CONFIG['SSLKEYLOGFILE']
             }
         )
         proc.communicate()
