@@ -13,5 +13,6 @@
     "dataset": {
         "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
     },
-    "vmafDir": "/var/nfs/video-lab/server/third_party/vmaf"
+    "vmafDir": "/var/nfs/video-lab/server/third_party/vmaf",
+    "SSLKEYLOGFILE": "/var/nfs/certs/ssl_keylog.txt"
 }
