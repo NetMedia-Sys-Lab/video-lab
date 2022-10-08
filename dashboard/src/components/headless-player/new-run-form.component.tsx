@@ -120,12 +120,15 @@ export const NewRunFormComponent = (props: {
                     <Checkbox value={"long-buffer-9"}>long-buffer-9</Checkbox>
                     <Checkbox value={"short-buffer"}>short-buffer</Checkbox>
                 </Checkbox.Group>
-                {/* <Select placeholder="Select Buffer Settings" allowClear>
-                    <Select.Option value={"long-buffer"}>Long Buffer</Select.Option>
-                    <Select.Option value={"short-buffer"}>Short Buffer</Select.Option>
-                    <Select.Option value={"long-buffer,short-buffer"}>Long Buffer & Short
-                        Buffer</Select.Option>
-                </Select> */}
+            </Form.Item>
+
+            <Form.Item label="Adaptation Algorithm" name="abr" rules={[{ required: true }]}>
+                <Checkbox.Group>
+                    <Checkbox value={"default"}>Default</Checkbox>
+                    <Checkbox value={"buffer-based"}>Buffer Based</Checkbox>
+                    <Checkbox value={"bandwidth-based"}>Bandwidth Based</Checkbox>
+                    <Checkbox value={"hybrid"}>Hybrid</Checkbox>
+                </Checkbox.Group>
             </Form.Item>
 
             <Form.Item label="Bandwidth Profiles" name="bwProfiles" rules={[{ required: true }]}>

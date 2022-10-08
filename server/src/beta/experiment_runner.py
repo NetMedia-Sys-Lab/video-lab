@@ -37,6 +37,7 @@ class RunsConfig(TypedDict):
     protocols: List[str]
     lengths: List[int]
     bufferSettings: List[str]
+    abr: List[str]
     bwProfiles: List[str]
     numWorkers: int
     repeat: int
@@ -56,6 +57,7 @@ class RunConfig(TypedDict):
     length: int
     bufferSetting: str
     bwProfile: str
+    abr: str
     attempt: int
     target: str
     env: str
@@ -137,6 +139,7 @@ class ExperimentRunner:
         configs = multiply(
             configs, runs_config['bufferSettings'], 'bufferSetting')
         configs = multiply(configs, runs_config['bwProfiles'], 'bwProfile')
+        configs = multiply(configs, runs_config['abr'], 'abr')
         configs = multiply(configs, runs_config['codecs'], 'codec')
         configs = multiply(configs, runs_config['lengths'], 'length')
         configs = multiply(configs, runs_config['beta'], 'beta')
@@ -157,7 +160,7 @@ class ExperimentRunner:
         for config in configs:
             config['runId'], config['runDir'] = self.make_run_id(
                 f"{CONFIG['headlessPlayer']['resultsDir']}/{config['resultId']}"
-                f"/run_{config['bwProfile']}_{config['bufferSetting']}_{config['codec']}_{config['video']}_{config['length']}sec_"
+                f"/run_{config['bwProfile']}_{config['bufferSetting']}_{config['abr']}_{config['codec']}_{config['video']}_{config['length']}sec_"
                 f"{'beta' if config['beta'] else 'nonbeta'}_{config['protocol']}"
             )
             config['runId'] = config['resultId'] + "/" + config['runId']

@@ -2,6 +2,10 @@
     .ant-drawer-body {
         padding: 0;
     }
+    .ant-drawer-content-wrapper {
+        min-width: 75vw;
+        max-width: 80vw;
+    }
     li {
         cursor: pointer;
     }
@@ -16,5 +20,12 @@
     }
     li:active, li.selected {
       background-color: #68c8f8;
+    }
+}
+
+.job-drawer {
+    .ant-drawer-content-wrapper {
+        min-width: 75vw;
+        max-width: 80vw;
     }
 }

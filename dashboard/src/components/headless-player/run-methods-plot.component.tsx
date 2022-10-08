@@ -29,20 +29,20 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
 
         const df = new DataFrame<RunDataType>(plotData).mapRows(r => {
             // results-all-087/run_drop-low_long-buffer_hevc_Aspen_1sec_nonbeta_tcp_01
-            const [result, run] = r.runId.split("/")
-            const [_, bwProfile, bufferSetting, codec, video, length, beta, protocol, logNum] = run.split("_")
+            // const [result, run] = r.runId.split("/")
+            // const [_, bwProfile, bufferSetting, codec, video, length, beta, protocol, logNum] = run.split("_")
             let method = "dash"
-            if (beta === "beta") {
-                if (protocol === "tcp") {
+            if (r.run_config.beta) {
+                if (r.run_config.protocol === "tcp") {
                     method = "beta"
                 } else {
                     method = "quic"
                 }
-            } else if (protocol !== "tcp") {
+            } else if (r.run_config.protocol !== "tcp") {
                 throw Error("Found run over non beta and quic")
             }
             return {
-                video,
+                video: r.run_config.video,
                 method,
                 numBuffStall: r.num_stall,
                 durBuffStall: r.dur_stall * 1000,

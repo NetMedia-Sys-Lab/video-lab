@@ -1,3 +1,5 @@
+import "./style.scss";
+
 import { Button, Descriptions, Divider, Drawer, Spin, Switch, Tabs, Typography } from "antd"
 import { nextTick } from "process";
 import { useEffect, useRef, useState } from "react"
@@ -42,6 +44,7 @@ export const JobDrawerComponent = (props: {
     }, [jobDetails.data]);
 
     return <Drawer
+        className="job-drawer"
         title={<>
             {"Job: " + jobId}
             <span style={{ float: "right" }}>
@@ -57,7 +60,7 @@ export const JobDrawerComponent = (props: {
         }
         placement="right"
         size={"large"}
-        width={1200}
+        width={"1200"}
         visible={jobId != null}
         closable={true}
         onClose={onClose}>
