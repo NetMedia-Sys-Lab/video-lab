@@ -13,8 +13,8 @@
             "justMyCode": true,
             "args": [
                 "--server",
-                // "--workers",
-                // "1"
+                "--workers",
+                "5"
             ]
         }
     ]

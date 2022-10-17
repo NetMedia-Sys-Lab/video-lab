@@ -6,7 +6,9 @@ import { D3Plot } from "./d3-plot";
 export declare type D3PlotBaseProps<T> = {
     dfGroups: DataFrameGroups<T>,
     axisIndex?: number,
-    fix?: boolean
+    fix?: boolean,
+    xLabel?: string
+    yLabel?: string
 }
 
 export abstract class D3PlotBase<T> {
@@ -14,6 +16,8 @@ export abstract class D3PlotBase<T> {
     dfGroups: DataFrameGroups<T>;
     axisIndex: number;
     fix: boolean;
+    xLabel: string;
+    yLabel: string;
 
     // After plotting
     plotSelections: {
@@ -32,6 +36,8 @@ export abstract class D3PlotBase<T> {
         this.dfGroups = props.dfGroups;
         this.axisIndex = props.axisIndex || 0;
         this.fix = props.fix || false;
+        this.xLabel = props.xLabel || "";
+        this.yLabel = props.yLabel || "";
     }
 
     abstract draw(plot: D3Plot, yScale: d3.ScaleLinear<any, any, any>): void;

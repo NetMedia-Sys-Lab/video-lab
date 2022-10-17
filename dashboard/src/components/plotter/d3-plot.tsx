@@ -86,10 +86,17 @@ export class D3Plot {
                 .domain(xScaleExtent as string[])
                 .range([0, this.innerWidth!]);
             this.xAxisGroup = this.svg!.append("g")
-                .style("font-size", "14px")
+                .style("font-size", "20px")
                 .attr("transform", `translate(0, ${this.innerHeight})`)
                 .call(d3.axisBottom(this.xScale));
         }
+        this.svg!.append("text")
+            .attr("class", "x label")
+            .attr("text-anchor", "middle")
+            .style("font-size", "20px")
+            .attr("x", this.innerWidth!/2)
+            .attr("y", this.innerHeight! + 50)
+            .text(this.plots.map(plot => plot.xLabel).join(", "));
 
 
         this.yScales = [];
@@ -113,19 +120,27 @@ export class D3Plot {
             }
             if (axisIndex === 0) {
                 this.yAxisGroups[axisIndex] = this.svg!.append("g")
-                    .style("font-size", "14px")
+                    .style("font-size", "20px")
                     .attr("transform", `translate(0, 0)`)
                     .call(d3.axisLeft(this.yScales[axisIndex])
                         .ticks(ticks)
-                        .tickSize(3));
+                        .tickSize(3))
             } else if (axisIndex > 0) {
                 this.yAxisGroups[axisIndex] = this.svg!.append("g")
-                    .style("font-size", "14px")
+                    .style("font-size", "20px")
                     .attr("transform", `translate(${this.innerWidth! + (axisIndex - 1) * 20}, 0)`)
                     .call(d3.axisRight(this.yScales[axisIndex])
                         .ticks(ticks)
                         .tickSize(0));
             }
+            this.svg!.append("text")
+                .attr("class", "y label")
+                .style("font-size", "20px")
+                .attr("text-anchor", "middle")
+                .attr("y", -80)
+                .attr("x", -this.innerHeight!/2)
+                .attr("transform", "rotate(-90)")
+                .text(this.plots.map(plot => plot.yLabel).join(", "));
             plots.forEach((plot, plotIndex) => {
                 plot.draw(this, this.yScales[axisIndex]);
                 /*if (plot.type === "barh") {

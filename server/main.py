@@ -17,6 +17,7 @@ from src.dataset import Dataset
 from src.beta.experiment_runner import ExperimentRunner
 from src.run_watcher import RunsWatcher
 from src.state_manager import StateManager
+from src.video import VideoInspector
 
 config_file = open("config.json")
 CONFIG = json.load(config_file)
@@ -61,6 +62,7 @@ def main():
         runner = ExperimentRunner(app, state_manager, job_manager)
         dataset = Dataset(app, job_manager, loop)
         headless_player_api = HeadlessPlayerApi(app, job_manager, runner, loop)
+        video_inspector = VideoInspector(app)
 
         # Init routes
         state_manager.init_routes()
@@ -68,6 +70,8 @@ def main():
         job_manager.init_routes()
         dataset.init_routes()
         headless_player_api.init_routes()
+        video_inspector.init_routes()
+
 
         # Run Background services
         runs_watcher.start_background()

@@ -1,12 +1,13 @@
 import asyncio
 import json
 import os
+from pprint import pprint
 import re
 from threading import Lock
 import subprocess
 import sys
 import time
-from os.path import join, exists
+from os.path import join, exists, basename
 from pathlib import Path
 from typing import List
 
@@ -16,6 +17,7 @@ from src.job_framework.jobs.job_python import register_python_job
 
 from src.job_framework.jobs.job_docker import DockerJob
 from src.beta.run import Run, get_run
+from src.util.ffmpeg import Ffmpeg
 
 config_file = open("config.json")
 CONFIG = json.load(config_file)
@@ -33,41 +35,7 @@ class Codec:
         self.run = run
         pass
 
-    @staticmethod
-    def ffmpeg_decode_segment(input_segments: List[str], output: str, video_format: str):
-        print(f"Joining segments : {input_segments}")
-        p_cat = subprocess.Popen(
-            ['cat', *input_segments], stdout=subprocess.PIPE)
-        subprocess.check_call(
-            ['ffmpeg', '-i', '-', '-vf', video_format, '-y', output],
-            stdin=p_cat.stdout,
-            stdout=sys.stdout,
-            stderr=sys.stderr)
-        p_cat.communicate()
-
-    @staticmethod
-    def ffmpeg_concat_segments(input_segments: List[str], output: str):
-        tmp_path = f"/tmp/segments-{round(time.time() * 1000)}.txt"
-        print(f"Segments list file : {tmp_path}")
-        with open(tmp_path, 'w') as f:
-            for seg in input_segments:
-                f.write(f"file '{seg}'\n")
-        subprocess.check_call(
-            ['ffmpeg', '-f', 'concat', '-safe', '0', '-i',
-                tmp_path, '-c', 'copy', '-y', output],
-            stdout=sys.stdout,
-            stderr=sys.stderr
-        )
-
-    @staticmethod
-    def ffprobe_get_frames(video_path):
-        return subprocess.check_output([
-            "ffprobe", "-v", "quiet", "-show_frames", "-of", "json",
-            video_path
-        ], stderr=sys.stderr).decode()
-
-    @staticmethod
-    def get_quality_and_index(seg_path):
+    def get_quality_and_index(self, seg_path):
         r = re.compile("(?:chunk|seg)-stream(\\d)-(\\d{5})\\.(?:mp4|m4s)$")
         s = r.search(seg_path)
         if s is not None:
@@ -87,7 +55,7 @@ class Codec:
             print(seg_name, init_name)
             yield (quality, index)
 
-    def get_original_segment(self, quality: int, index: int, run_id: str):
+    def get_original_segment(self, quality: int, index: int):
         seg_path = join(self.run.original_video_dir,
                         f"chunk-stream{quality}-{index:05d}.m4s")
         init_path = join(self.run.original_video_dir,
@@ -99,15 +67,15 @@ class Codec:
         enc_path = join(self.run.original_video_dir, 'encoded',
                         f"seg-stream{quality}-{index:05d}.mp4")
         if not exists(enc_path):
-            Codec.ffmpeg_decode_segment(
+            Ffmpeg.decode_segment(
                 [init_path, seg_path], enc_path, "scale=1920:1080")
         return enc_path
 
-    def get_encoded_segment(self, quality: int, index: int, run_id: str):
+    def get_encoded_segment(self, quality: int, index: int):
         enc_path = join(self.run.segments_dir,
                         f"seg-stream{quality}-{index:05d}.mp4")
         if not exists(enc_path):
-            Codec.ffmpeg_decode_segment([
+            Ffmpeg.decode_segment([
                 join(self.run.downloads_dir, f"init-stream{quality}.m4s"),
                 join(self.run.downloads_dir,
                      f"chunk-stream{quality}-{index:05d}.m4s")
@@ -116,13 +84,33 @@ class Codec:
 
     def encode_playback(self):
         playback_path = join(self.run.downloads_dir, "playback.mp4")
+        if exists(playback_path):
+            return playback_path
         enc_segments = []
         for quality, index in self.get_downloaded_segments():
-            enc_segments.append(self.get_encoded_segment(
-                quality, index, str(self.run)))
-        enc_segments.sort()
-        self.ffmpeg_concat_segments(enc_segments, playback_path)
+            enc_segments.append(self.get_encoded_segment(quality, index))
+        enc_segments.sort(key=lambda s: self.get_quality_and_index(s)[1])
+        Ffmpeg.concat_segments(enc_segments, playback_path)
         return playback_path
+    
+    def encode_playback_with_buffering(self):
+        source_path = join(self.run.downloads_dir, "playback.mp4")
+        output_path = join(self.run.downloads_dir, "playback_buffering.mp4")
+
+        if exists(output_path):
+            return output_path
+
+        frame_rate = Ffmpeg.get_frame_rate(source_path)
+
+        run_states = self.run.details["states"]
+        parts = []
+        for i in range(1, len(run_states)):
+            if run_states[i]["state"] in ("State.BUFFERING", "State.END"):
+                parts.append(Ffmpeg.cut_video(source_path,run_states[i-1]["position"],run_states[i]["position"]))
+            else:
+                parts.append(Ffmpeg.generate_buffering_segment(frame_rate, run_states[i]["time"]-run_states[i-1]["time"]))
+        Ffmpeg.concat_segments(parts, output_path)
+        return output_path
 
     def calculate_vmaf_for_segment(self, quality: int, index: int):
         output_file = join(self.run.vmaf_dir,
@@ -131,8 +119,8 @@ class Codec:
             with open(output_file) as f:
                 return json.load(f)
         else:
-            dis_file = self.get_encoded_segment(quality, index, str(self.run))
-            ref_file = self.get_original_segment(quality, index, str(self.run))
+            dis_file = self.get_encoded_segment(quality, index)
+            ref_file = self.get_original_segment(quality, index)
             docker_job: DockerJob = DockerJob(
                 config={
                     'image': "jrottenberg/ffmpeg:4.4-ubuntu",
@@ -157,8 +145,8 @@ class Codec:
             with open(output_file) as f:
                 return json.load(f)
         else:
-            dis_file = self.get_encoded_segment(quality, index, str(self.run))
-            output = json.loads(self.ffprobe_get_frames(dis_file))
+            dis_file = self.get_encoded_segment(quality, index)
+            output = json.loads(Ffmpeg.get_frames(dis_file))
             with open(output_file, 'w') as f:
                 f.write(json.dumps(output, indent=4))
             return output
@@ -183,3 +171,11 @@ class Codec:
         codec = Codec(run)
         codec.calcualte_vmaf_for_segments()
         codec.calculate_stalls_for_segments()
+
+    @staticmethod
+    @register_python_job()
+    def encode_playback_job(run_id: str):
+        run = get_run(run_id)
+        codec = Codec(run)
+        codec.encode_playback()
+        codec.encode_playback_with_buffering()

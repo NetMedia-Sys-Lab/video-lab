@@ -1,9 +1,9 @@
-import "./player.scss.css";
+import "./style.scss";
 import {useEffect, useRef, useState} from "react";
 import {FastBackwardFilled, PlayCircleOutlined} from '@ant-design/icons';
 import {RunStateType} from "../../types/run-data.type";
 
-const useVideoPlayer = (videoElement: React.MutableRefObject<HTMLVideoElement | null>, states: RunStateType[]) => {
+const useVideoPlayer = (videoElement: React.MutableRefObject<HTMLVideoElement | null>, states?: RunStateType[]) => {
     const [playerState, setPlayerState] = useState({
         isPlaying: false,
         progress: 0,
@@ -23,7 +23,7 @@ const useVideoPlayer = (videoElement: React.MutableRefObject<HTMLVideoElement | 
         videoElement.current!.pause();
 
         if (!playerState.isPlaying) {
-            states.forEach(state => {
+            states && states.forEach(state => {
 
                 setTimeout(() => {
                     console.log(videoElement.current!.currentTime, state);
@@ -99,7 +99,7 @@ const useVideoPlayer = (videoElement: React.MutableRefObject<HTMLVideoElement | 
 };
 
 export const VideoPlayer = (props: {
-    src: string, states: RunStateType[]
+    src: string, states?: RunStateType[]
 }) => {
     const {src, states} = props;
     const videoElement = useRef<HTMLVideoElement>(null);

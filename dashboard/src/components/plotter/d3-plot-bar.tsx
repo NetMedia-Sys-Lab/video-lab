@@ -12,6 +12,9 @@ export declare type D3PlotBarProps<T> = D3PlotBaseProps<T> & {
     text?: Acc<T, string>,
     style?: Acc<T, RectStyle>
     class?: Acc<T, string>
+
+    xLabel?: string
+    yLabel?: string
 }
 
 export class D3PlotBar<T> extends D3PlotBase<T> {

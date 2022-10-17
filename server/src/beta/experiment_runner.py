@@ -158,6 +158,7 @@ class ExperimentRunner:
             filter(lambda c: c['beta'] or c['protocol'] != "quic", configs))
 
         for config in configs:
+            config['length'] = int(config['length'])
             config['runId'], config['runDir'] = self.make_run_id(
                 f"{CONFIG['headlessPlayer']['resultsDir']}/{config['resultId']}"
                 f"/run_{config['bwProfile']}_{config['bufferSetting']}_{config['abr']}_{config['codec']}_{config['video']}_{config['length']}sec_"

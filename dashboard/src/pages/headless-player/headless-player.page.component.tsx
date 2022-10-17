@@ -21,7 +21,7 @@ import {
 } from "antd";
 
 import { DeleteOutlined, ExperimentOutlined } from '@ant-design/icons';
-import { calculateRunQuality, deleteRuns, postNewRunConfig, useGetAllResults, useStateSocket } from "../../common/api";
+import { calculateRunQuality, deleteRuns, encodePlayback, postNewRunConfig, useGetAllResults, useStateSocket } from "../../common/api";
 import { RunConfig, RunOrResult, RunsFilterType } from "../../types/result.type";
 import { ColumnsType } from "antd/lib/table";
 import { Link } from "react-router-dom";
@@ -125,12 +125,17 @@ export const HeadlessPlayerComponent = () => {
             <Space>
                 <Button disabled={selectedRuns.length === 0} key="4" type="primary" danger icon={<DeleteOutlined />} onClick={onDelete}> Delete Selected</Button>
                 <Button disabled={selectedRuns.length === 0} key="2" type="primary" onClick={async () => {
-                    const response = await calculateRunQuality(selectedRuns.map(run => run.runId));
-                    console.log(response)
+                    const response = await calculateRunQuality(selectedRuns.map(run => run.runId))
                     await notification.success({
                         message: response.message || JSON.stringify(response)
                     });
                 }}>Calculate VMAF</Button>
+                <Button disabled={selectedRuns.length === 0} key="5" type="primary" onClick={async () => {
+                    const response = await encodePlayback(selectedRuns.map(run => run.runId))
+                    await notification.success({
+                        message: response.message || JSON.stringify(response)
+                    });
+                }}>Encode Playback</Button>
                 <Button disabled={selectedRuns.length == 0} key="3" type="primary"
                     href={makeHeadlessPlayerComparePath(selectedRuns.map(run => run.runId))}>Plot
                     Selected</Button>

@@ -163,8 +163,8 @@ export const useGetLogs = createUseAPI<[runId: string], { logs: LogLineType[] }>
     return await response.json();
 });
 
-export const encodePlayback = async (runId: string) => {
-    const response = await fetch(`${HeadlessPlayerApi}/runs/encode-playback?run=${euc(runId)}`);
+export const encodePlayback = async (runIds: string[]) => {
+    const response = await fetch(`${HeadlessPlayerApi}/runs/encode-playback?runs=${euc(runIds.join(","))}`);
     return await response.json();
 }
 
@@ -195,4 +195,4 @@ export const makeKibanaQuery = (options: KibanaQuery) => {
 export const makeKibanaLink = (options: KibanaQuery) =>
     `http://localhost:5601/app/logs/stream?logFilter=(language:kuery,query:${euc(`'${makeKibanaQuery(options)}'`)})`;
 
-export const playbackVideoUrl = (runId: string) => `${ApiBase}/static/runs/${runId}/downloaded/playback.mp4`
+export const playbackVideoUrl = (runId: string) => `${ApiBase}/static/runs/${runId}/downloaded/playback_buffering.mp4`

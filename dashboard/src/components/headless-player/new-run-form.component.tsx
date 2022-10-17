@@ -19,7 +19,6 @@ export const NewRunFormComponent = (props: {
             beta: betas.filter((v, i) => betas.indexOf(v) === i),
             protocols: protocols.filter((v, i) => protocols.indexOf(v) === i),
             codecs: values.codecs.split(","),
-            lengths: values.lengths.split(",").map(parseInt),
             calculateVmaf: values.calculateQuality.indexOf("vmaf") >= 0
         }
         localStorage.setItem('new-run-last-values', JSON.stringify(values))
@@ -106,11 +105,16 @@ export const NewRunFormComponent = (props: {
             </Form.Item>
 
             <Form.Item label="Segment Lengths" name="lengths" rules={[{ required: true }]}>
-                <Select placeholder="Select Lengths for segments" allowClear>
+                {/* <Select placeholder="Select Lengths for segments" allowClear>
                     <Select.Option value={"1"}>1 sec</Select.Option>
                     <Select.Option value={"2"}>2 sec</Select.Option>
                     <Select.Option value={"1,2"}>1 sec & 2 sec</Select.Option>
-                </Select>
+                </Select> */}
+
+                <Checkbox.Group>
+                    <Checkbox value={1}>1 sec</Checkbox>
+                    <Checkbox value={2}>2 sec</Checkbox>
+                </Checkbox.Group>
             </Form.Item>
 
             <Form.Item label="Buffer Setting" name="bufferSettings" rules={[{ required: true }]}>

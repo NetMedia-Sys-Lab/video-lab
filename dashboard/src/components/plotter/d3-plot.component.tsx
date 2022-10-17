@@ -25,7 +25,7 @@ export const D3PlotComponent = (props: {
     const [dimensions, setDimensions] = useState<D3PlotDimensionsType>({
         width: props.width || 600,
         height: props.height || 900,
-        margin: props.margin ||{ top: 30, right: 60, bottom: 30, left: 60 }
+        margin: props.margin ||{ top: 30, right: 60, bottom: 60, left: 100 }
     });
     const [plot, setPlot] = useState<D3Plot | null>(null);
     const [isBrushing, setIsBrushing] = useState(false);

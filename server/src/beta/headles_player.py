@@ -32,8 +32,12 @@ class HeadlessPlayerApi:
     def init_routes(self):
 
         @self.app.route('/static/runs/<path:path>')
-        def send_report(path):
+        def static_runs(path):
             return send_from_directory(CONFIG['headlessPlayer']['resultsDir'], path)
+        
+        @self.app.route('/static/dataset/<path:path>')
+        def static_dataset(path):
+            return send_from_directory(CONFIG['dataset']['datasetDir'], path)
 
         @self.app.get('/headless-player/runs')
         def _get_all_results():
@@ -64,32 +68,19 @@ class HeadlessPlayerApi:
 
         @self.app.get('/headless-player/runs/encode-playback')
         def _get_encode_playback():
-            run = get_run(request.args["run"])
-            codec = Codec(run, self.job_manager)
-            return jsonify(codec.encode_playback())
+            run_ids = request.args['runs'].split(",")
+            asyncio.set_event_loop(self.loop)
+            for run_id in run_ids:
+                self.job_manager.schedule(PythonJob(config={
+                    'callback': Codec.encode_playback_job.__name__,
+                    "args": (run_id,),
+                    'kwargs': {}
+                }))
+            return jsonify({'message': f"Scheduled {len(run_ids)} playback encoding"})
 
         @self.app.get('/headless-player/runs/playback-quality')
         def _get_quality():
             run_ids = request.args['runs'].split(",")
-            # if len(runs) == 1:
-            #     codec = Codec(runs[0], self.job_manager)
-            #     future = asyncio.run_coroutine_threadsafe(codec.calculate_quality(), self.loop)
-            #     print("Waiting for playback-quality results")
-            #     result = future.result()
-            #     print("Got playback-quality results")
-            #     return jsonify(result)
-            # else:
-            # async def await_tasks():
-            #     tasks = []
-            #     for run in runs:
-            #         codec = Codec(run, self.job_manager)
-            #         tasks.append(codec.calculate_quality())
-            #     await asyncio.gather(*tasks)
-            # Thread(
-            #     target=,
-            #     args=(await_tasks,),
-            #     daemon=True).start()
-            # asyncio.run_coroutine_threadsafe(await_tasks(), self.loop)
             asyncio.set_event_loop(self.loop)
             for run_id in run_ids:
                 self.job_manager.schedule(PythonJob(config={

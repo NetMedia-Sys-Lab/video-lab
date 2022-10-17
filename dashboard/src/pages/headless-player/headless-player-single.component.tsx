@@ -1,22 +1,18 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { LogLineType } from "../../types/result.type";
-import { Button, Layout, Modal, PageHeader, Table, Tabs } from "antd";
+import { useMemo, useState } from "react";
+import { Button, Layout, Modal, Tabs } from "antd";
 import { RunTimelinePlotComponent } from "../../components/headless-player/run-timeline-plot.component";
-import { ColumnsType } from "antd/lib/table";
 import {
     calculateRunQuality,
     encodePlayback,
     makeKibanaLink,
     openPcapFile,
     playbackVideoUrl,
-    useGetLogs,
     useGetRunsData
 } from "../../common/api";
-import { MarkerUpdateCallback } from "../../types/plot.type";
 import ReactJson from 'react-json-view'
 import { PageType } from "../../types/page.type";
 import { useQueryString } from "../../common/util";
+import { VideoPlayer } from "../../components/player/player.component";
 
 const { Content, Header } = Layout;
 const euc = encodeURIComponent;
@@ -48,14 +44,15 @@ export const HeadlessPlayerSingleComponent = () => {
                     }}>Calculate Quality</Button>
 
                 </Tabs.TabPane>
-                {/* <Tabs.TabPane tab={"Playback"} key={"4"}>
-                    {runsData.data && <VideoPlayer
-                        src={playbackVideoUrl(runId)}
-                        states={runsData.data[runId].states}
-                    />}
-                    <Button onClick={e => encodePlayback(runId)}>Encode Playback File</Button>
+                <Tabs.TabPane tab={"Playback"} key={"4"}>
+                    {/* {runsData.data && <VideoPlayer src={playbackVideoUrl(runId)}/>} */}
+                    <Button onClick={e => encodePlayback([runId])}>Encode Playback File</Button>
+                    <br/>
                     {playbackVideoUrl(runId)}
-                </Tabs.TabPane> */}
+                    <video style={{width: "100%"}} controls>
+                        <source src={playbackVideoUrl(runId)} type="video/mp4" />
+                    </video>
+                </Tabs.TabPane>
             </Tabs>
             <Modal
                 title="Quality"

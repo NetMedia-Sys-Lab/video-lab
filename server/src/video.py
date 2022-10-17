@@ -27,11 +27,15 @@ class Video:
 
 
 class VideoInspector:
+    app: Flask
 
-    @staticmethod
-    def init_routes(app: Flask):
+    def __init__(self, app: Flask) -> None:
+        self.app = app
+        pass
 
-        @app.get('/video-inspector/video/details')
+    def init_routes(self):
+
+        @self.app.get('/video-inspector/video/details')
         def _get_video_details():
             urls = request.args['urls'].split(",")
             video = Video(urls=urls)

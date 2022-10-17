@@ -145,7 +145,8 @@ export const RunTimelinePlotComponent = (props: {
         }
         if (plotConfig.plotPosition) {
             states.plotLine(plots, {
-                yAcc: r => r.position / r.segmentLength
+                yAcc: r => r.position / r.segmentLength,
+                colors
             });
         }
         if (plotConfig.plotQualityLevels) {

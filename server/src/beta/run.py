@@ -218,14 +218,14 @@ class Run:
                         play_duration = 0
                         for frame in stall['frames']:
                             play_duration += float(frame['pkt_duration_time'])
-                        stall_duration = self.run_config["length"] - play_duration
+                        stall_duration = int(self.run_config["length"]) - play_duration
                         frames_received = len(stall['frames'])
 
                         stalls.append({
                             'play_duration': round(play_duration, 3),
                             'stall_duration': round(stall_duration, 3),
                             'frames_received': frames_received,
-                        })
+                        })  
             return {
                 "total_stall_duration": sum(map(lambda stall: stall['stall_duration'], stalls)),
                 "total_play_duration": sum(map(lambda stall: stall['play_duration'], stalls)),
@@ -260,7 +260,7 @@ class Run:
     @cached_property
     def original_video_dir(self):
         path = join(dataset_dir, 'videos', self.run_config['codec'])
-        if self.run_config['length'] == 2:
+        if int(self.run_config['length']) == 2:
             path += "-2sec"
         path = join(path, self.run_config['video'])
         return path

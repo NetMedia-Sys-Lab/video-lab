@@ -15,6 +15,9 @@ export declare type D3PlotBarhProps<T> = D3PlotBaseProps<T> & {
     style?: Acc<T, RectStyle>
     class?: Acc<T,string>
 
+    xLabel?: string
+    yLabel?: string
+
     onSelect?: PlotItemSelectCallback<T>
 }
 
