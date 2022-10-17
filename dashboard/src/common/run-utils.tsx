@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { RunConfig, RunOrResult, RunsFilterType } from "../types/result.type";
+import { RunOrResult, RunsFilterType } from "../types/result.type";
 
 export function useFilterRuns(runs: RunOrResult[], filter: RunsFilterType) {
     return useMemo(() => {
