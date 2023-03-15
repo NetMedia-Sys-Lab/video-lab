@@ -1,7 +1,7 @@
 {
     "headlessPlayer": {
         "resultsDir": "/home/akram/ucalgary/research/runs",
-        "resultDirPrefix": "results",
+        "resultDirPrefix": "",
         "dockerCompose": "/home/akram/ucalgary/research/beta-emulator-quic/docker-compose.yml",
         "profilesDir": "/home/akram/ucalgary/research/beta/scripts/expr/bandwidth",
         "envsDir": "/home/akram/ucalgary/research/beta-emulator-quic/dash_emulator_quic/resources"
@@ -14,5 +14,6 @@
         "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
     },
     "vmafDir": "/home/akram/ucalgary/research/video-lab/server/third_party/vmaf",
+    "cacheDir": "/home/akram/ucalgary/research/tmp",
     "SSLKEYLOGFILE": "/home/akram/ucalgary/research/certs/ssl_keylog.txt"
 }

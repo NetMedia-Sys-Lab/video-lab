@@ -25,7 +25,7 @@ class JobWorker(Thread):
         while True:
             job = self.queues.get('scheduled')
             mkdir(job.job_dir)
-            stdouterr_file = open(job.stdouterr_path, 'w+')
+            stdouterr_file = open(job.stdouterr_path, 'wb+')
             stdout_thread, stderr_thread = redirect(stdouterr_file)
             try:
                 job.status = JobStatus.RUNNING

@@ -1,9 +1,9 @@
-import {D3PlotDimensionsType, D3SelectionType, ExtentType, MarkerUpdateCallback, objectMap} from "../../types/plot.type";
+import { D3PlotDimensionsType, D3SelectionType, ExtentType, LegendType, MarkerUpdateCallback, objectMap } from "../../types/plot.type";
 import * as d3 from "d3";
-import {BrushBehavior} from "d3";
+import { BrushBehavior } from "d3";
 import React from "react";
-import {mergeExtent} from "./dataframe";
-import {D3PlotBase} from "./d3-plot-base";
+import { applyAcc, mergeExtent } from "./dataframe";
+import { D3PlotBase } from "./d3-plot-base";
 
 export class D3Plot {
     xScale?: d3.ScaleBand<any> | d3.ScaleLinear<any, any>
@@ -19,6 +19,7 @@ export class D3Plot {
 
     private yScales: d3.ScaleLinear<number, number, any>[] = [];
     private yAxisGroups: D3SelectionType[] = [];
+    private legend: LegendType = {};
 
     // Props
     private svgRef: React.RefObject<SVGSVGElement>;
@@ -39,6 +40,7 @@ export class D3Plot {
         this.innerHeight = this.dimensions.height - this.dimensions.margin.top - this.dimensions.margin.bottom;
         this.yScales = [];
         this.yAxisGroups = [];
+        this.legend = {};
 
         this.svg = d3.select(this.svgRef.current)
             .append("g")
@@ -74,6 +76,7 @@ export class D3Plot {
 
     draw() {
         const xScaleExtent = this.getXScaleExtent();
+        // console.log(JSON.stringify(xScaleExtent[0]), typeof xScaleExtent[0])
         if (typeof xScaleExtent[0] === "number") {
             this.xScale = d3.scaleLinear()
                 .domain(xScaleExtent as [number, number])
@@ -94,9 +97,9 @@ export class D3Plot {
             .attr("class", "x label")
             .attr("text-anchor", "middle")
             .style("font-size", "20px")
-            .attr("x", this.innerWidth!/2)
+            .attr("x", this.innerWidth! / 2)
             .attr("y", this.innerHeight! + 50)
-            .text(this.plots.map(plot => plot.xLabel).join(", "));
+            .text(this.plots.map(plot => plot.xLabel).filter(Boolean).join(", "));
 
 
         this.yScales = [];
@@ -115,9 +118,9 @@ export class D3Plot {
                 .domain(yScaleExtent)
                 .range([this.innerHeight!, 0]);
             let ticks = 10;
-            if (Math.abs(yScaleExtent[1] - yScaleExtent[0]) < 25) {
-                ticks = Math.abs(yScaleExtent[1] - yScaleExtent[0]);
-            }
+            // if (Math.abs(yScaleExtent[1] - yScaleExtent[0]) < 25) {
+            //     ticks = Math.abs(yScaleExtent[1] - yScaleExtent[0]);
+            // }
             if (axisIndex === 0) {
                 this.yAxisGroups[axisIndex] = this.svg!.append("g")
                     .style("font-size", "20px")
@@ -137,22 +140,112 @@ export class D3Plot {
                 .attr("class", "y label")
                 .style("font-size", "20px")
                 .attr("text-anchor", "middle")
-                .attr("y", -80)
-                .attr("x", -this.innerHeight!/2)
+                .attr("y", -40)
+                .attr("x", -this.innerHeight! / 2)
                 .attr("transform", "rotate(-90)")
-                .text(this.plots.map(plot => plot.yLabel).join(", "));
+                .text(this.plots.map(plot => plot.yLabel).filter(Boolean).join(", "));
             plots.forEach((plot, plotIndex) => {
+                // console.log(plot.legendLabels)
                 plot.draw(this, this.yScales[axisIndex]);
-                /*if (plot.type === "barh") {
-                    this.drawBarhChart(plot as D3PlotBaseBarh<any>, this.yScales[axisIndex]);
-                } else if (plot.type === "line") {
-                    this.drawLineChart(plot as D3PlotBaseLine<any>, this.yScales[axisIndex]);
-                } else if (plot.type === "bar") {
-                    this.drawBarChart(plot as D3PlotBaseBar<any>, this.yScales[axisIndex]);
-                }*/
+                plot.dfGroups.forEach((gid, df, dfIndex) => {
+                    const color = applyAcc(plot.colors[dfIndex], gid, dfIndex)
+                    const legendId = this.addAlpha(color, (plot as any).opacity || 1)
+                    this.legend[legendId] = {
+                        label: plot.legendLabels[gid],
+                        color, opacity: (plot as any).opacity
+                    };
+                })
             })
         }
+        this.drawLegend()
+    }
 
+    drawLegend() {
+        // console.log("Drawing legend", this.legend)
+        const style = {
+            placement: 'top-left',
+            anchor: 'top-left',
+            spacing: 5,
+            colorBoxSize: 20,
+            fontSize: 20,
+            grid: [20, 1]
+        }
+        const legendsGroup = this.svg!.append('g')
+        const allGs = []
+        const columnWidth = []
+        const rowHeight = []
+        for (let r = 0; r < style.grid[0]; r++) {
+            rowHeight[r] = 0
+        }
+        for (let c = 0; c < style.grid[1]; c++) {
+            columnWidth[c] = 0
+        }
+        let r = 0, c = 0
+        for (const legendId in this.legend) {
+            const g = legendsGroup.append('g')
+            g.append("rect")
+                .attr("x", style.spacing)
+                .attr("width", style.colorBoxSize)
+                .attr("y", style.spacing)
+                .attr("height", style.colorBoxSize)
+                .attr("fill", this.legend[legendId].color)
+                .attr("fill-opacity", this.legend[legendId].opacity)
+                .attr("stroke", "black");
+            g.append("text")
+                .attr("x", style.spacing * 2 + style.colorBoxSize)
+                .attr("y", style.spacing / 2 + style.fontSize)
+                .attr('font-size', 20)
+                .text(this.legend[legendId].label)
+            const bbox = g.node()?.getBBox()!;
+            allGs.push(g)
+
+            columnWidth[c] = Math.max(columnWidth[c], bbox.width + style.spacing * 2)
+            rowHeight[r] = Math.max(rowHeight[r], bbox.height + style.spacing)
+
+            c++;
+            if (c >= style.grid[1]) {
+                r++;
+                c = 0;
+            }
+
+        }
+        let cx = 0, cy = 0
+        c = 0; r = 0;
+        for (const g of allGs) {
+            g.attr('transform', `translate(${cx}, ${cy})`)
+            cx += columnWidth[c]
+            c++;
+            if (c >= style.grid[1]) {
+                cy += rowHeight[r]
+                r++
+                c = 0
+                cx = 0
+            }
+        }
+        const h = legendsGroup.node()?.getBBox().height!
+        const w = legendsGroup.node()?.getBBox().width!
+        const pos = [0,0]
+        switch (style.placement.split("-")[0]) {
+            case "top": pos[1] = 0; break;
+            case "middle": pos[1] = this.innerHeight!/2; break;
+            case "bottom": pos[1] = this.innerHeight!; break;
+        }
+        switch (style.placement.split("-")[1]) {
+            case "left": pos[0] = 0; break;
+            case "center": pos[0] = this.innerWidth!/2; break;
+            case "right": pos[0] = this.innerWidth!; break;
+        }
+        switch (style.anchor.split("-")[0]) {
+            case "top": pos[1] -= -style.spacing*2; break;
+            case "middle": pos[1] -= h/2; break;
+            case "bottom": pos[1] -= h + style.spacing*2; break;
+        }
+        switch (style.anchor.split("-")[1]) {
+            case "left": pos[0] -= -style.spacing*2; break;
+            case "center": pos[0] -= w/2; break;
+            case "right": pos[0] -= w + style.spacing*2; break;
+        }
+        legendsGroup.attr('transform', `translate(${pos[0]}, ${pos[1]})`)
     }
 
     onMarkerUpdate(markerUpdateCallback?: MarkerUpdateCallback) {
@@ -168,10 +261,10 @@ export class D3Plot {
                     .on("end", () => {
                         // @ts-ignore
                         let e = d3.event.selection;
-                        if(!e) {
+                        if (!e) {
                             // @ts-ignore
                             var [xpos, ypos] = d3.mouse(this.svg!.node());
-                            e = [xpos, xpos+1];
+                            e = [xpos, xpos + 1];
                         }
                         onBrushEnd([[e[0], 0], [e[1], this.innerHeight!]])
                     })
@@ -182,7 +275,7 @@ export class D3Plot {
                     .on("end", () => {
                         // @ts-ignore
                         let e = d3.event.selection;
-                        if(!e) {
+                        if (!e) {
                             // @ts-ignore
                             var [xpos, ypos] = d3.mouse(this.svg!.node());
                             e = [ypos, ypos];
@@ -196,10 +289,10 @@ export class D3Plot {
                     .on("end", () => {
                         // @ts-ignore
                         let e = d3.event.selection;
-                        if(!e) {
+                        if (!e) {
                             // @ts-ignore
                             var me = d3.mouse(this.svg!.node());
-                            e = [me,me];
+                            e = [me, me];
                         }
                         onBrushEnd(e);
                     })
@@ -220,9 +313,9 @@ export class D3Plot {
             .append("rect")
             .attr('class', 'temp')
             .attr("x", d => left)
-            .attr("width", right-left)
+            .attr("width", right - left)
             .attr("y", top)
-            .attr("height", bottom-top)
+            .attr("height", bottom - top)
             .attr("fill", "grey")
             .attr("opacity", 0.2)
             .attr('stroke', 'black')
@@ -265,8 +358,10 @@ export class D3Plot {
             extents.push(plot.getXScaleExtent());
         }
         let xScaleExtent = mergeExtent(...extents);
-        if (typeof xScaleExtent[1] === "number") {
-            xScaleExtent[1] += 2
+        if (typeof xScaleExtent[1] === "number" && typeof xScaleExtent[0] === "number") {
+            const extendEnds = Math.abs(xScaleExtent[1] - xScaleExtent[0])*0.05;
+            xScaleExtent[1] += extendEnds
+            xScaleExtent[0] -= extendEnds
             xScaleExtent = mergeExtent(xScaleExtent, [0, 0]);
         }
         return xScaleExtent
@@ -322,8 +417,8 @@ export class D3Plot {
             });
             plot.plotSelections.text.forEach(selection => {
                 selection.transition().duration(duration)
-                    .attr("x", d => this.xScale!(d.x as any)+ (d.xShift || 0))
-                    .attr("y", d => yScale(d.y)+ (d.yShift || 0));
+                    .attr("x", d => this.xScale!(d.x as any) + (d.xShift || 0))
+                    .attr("y", d => yScale(d.y) + (d.yShift || 0));
             });
             plot.plotSelections.bars.forEach(selection => {
                 selection.transition().duration(duration)
@@ -376,7 +471,7 @@ export class D3Plot {
             this.ruleText!.text(xVal.toFixed(3))
                 .attr('x', xpos + 1);
         }
-        
+
     }
 
     private zoom() {

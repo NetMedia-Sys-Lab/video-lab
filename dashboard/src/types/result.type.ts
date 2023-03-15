@@ -16,6 +16,7 @@
     serverLogLevel: str*/
 
 export declare type RunConfig =  {
+    K_MAXIMUM_WINDOW: string
     resultId: string
     runId: string
     video: string

@@ -1,6 +1,7 @@
-import { Button, Checkbox, Form, FormInstance, Input, InputNumber, message, Select, Spin } from "antd"
+import { Button, Checkbox, Col, Form, FormInstance, Input, InputNumber, message, Row, Select, Space, Spin } from "antd"
 import { createRef, useState } from "react"
 import { postNewRunConfig } from "../../common/api"
+import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons"
 
 export const NewRunFormComponent = (props: {
     onRunScheduled: (resultId: string) => void
@@ -9,19 +10,25 @@ export const NewRunFormComponent = (props: {
     const [isScheduling, setIsScheduling] = useState(false)
     const formRef = createRef<FormInstance>()
     const defaultValues = JSON.parse(localStorage.getItem("new-run-last-values") || "{}")
+    const [extra, setExtra] = useState<{ prop: string, values: string[] }[]>([]);
 
     const onNewRunSubmit = (values: any) => {
         const betas: boolean[] = values.methods.map((v: string) => v.split(",")[0] === "beta")
         const protocols: string[] = values.methods.map((v: string) => v.split(",")[1])
         const newResultId: string = values.resultId
+        const extraMap: any = {}
         const config = {
             ...values,
             beta: betas.filter((v, i) => betas.indexOf(v) === i),
             protocols: protocols.filter((v, i) => protocols.indexOf(v) === i),
             codecs: values.codecs.split(","),
-            calculateVmaf: values.calculateQuality.indexOf("vmaf") >= 0
+            calculateVmaf: values.calculateQuality.indexOf("vmaf") >= 0,
+            extra: extraMap,
         }
-        localStorage.setItem('new-run-last-values', JSON.stringify(values))
+        for (const extraItem of extra) {
+            extraMap[extraItem.prop] = extraItem.values
+        }
+        localStorage.setItem('new-run-last-values', JSON.stringify({...values, extra}))
         console.log(config)
         setIsScheduling(true)
         postNewRunConfig(config)
@@ -51,6 +58,7 @@ export const NewRunFormComponent = (props: {
         }
         console.log(values)
         formRef.current?.setFieldsValue(values)
+        setExtra(values.extra || [])
     }
 
     return <Spin tip="Scheduling" spinning={isScheduling}>
@@ -105,12 +113,6 @@ export const NewRunFormComponent = (props: {
             </Form.Item>
 
             <Form.Item label="Segment Lengths" name="lengths" rules={[{ required: true }]}>
-                {/* <Select placeholder="Select Lengths for segments" allowClear>
-                    <Select.Option value={"1"}>1 sec</Select.Option>
-                    <Select.Option value={"2"}>2 sec</Select.Option>
-                    <Select.Option value={"1,2"}>1 sec & 2 sec</Select.Option>
-                </Select> */}
-
                 <Checkbox.Group>
                     <Checkbox value={1}>1 sec</Checkbox>
                     <Checkbox value={2}>2 sec</Checkbox>
@@ -120,6 +122,7 @@ export const NewRunFormComponent = (props: {
             <Form.Item label="Buffer Setting" name="bufferSettings" rules={[{ required: true }]}>
                 <Checkbox.Group>
                     <Checkbox value={"long-buffer"}>long-buffer</Checkbox>
+                    <Checkbox value={"long-buffer-5"}>long-buffer-5</Checkbox>
                     <Checkbox value={"long-buffer-7"}>long-buffer-7</Checkbox>
                     <Checkbox value={"long-buffer-9"}>long-buffer-9</Checkbox>
                     <Checkbox value={"short-buffer"}>short-buffer</Checkbox>
@@ -143,7 +146,7 @@ export const NewRunFormComponent = (props: {
                 </Select>
             </Form.Item>
 
-            <Form.Item label="Calculate Quality" name="calculateQuality" rules={[{ required: true }]}>
+            <Form.Item label="Calculate Quality" name="calculateQuality" rules={[{ required: false }]}>
                 <Checkbox.Group>
                     <Checkbox value={"vmaf"}>VMAF</Checkbox>
                 </Checkbox.Group>
@@ -161,17 +164,74 @@ export const NewRunFormComponent = (props: {
                 </Select>
             </Form.Item>
 
+            
+            {extra.map((extraItem, extraIndex) => 
+                <Row>
+                    <Col span={4} offset={4} style={{textAlign: "right", paddingRight: 10, flexDirection: 'row'}}>
+                        <Space>
+                        <MinusCircleOutlined
+                            onClick={() => setExtra([
+                                ...extra.slice(0, extraIndex),
+                                ...extra.slice(extraIndex+1)
+                            ])}
+                        />
+                        <Input
+                            value={extraItem.prop}
+                            onChange={(ev) => setExtra([
+                                ...extra.slice(0, extraIndex),
+                                {...extraItem, prop: ev.target.value},
+                                ...extra.slice(extraIndex+1)
+                            ])}
+                            style={{width: '100%', textAlign: "right"}}
+                        />
+                        </Space>
+                    </Col>
+                    <Col span={8}>
+                        <Select
+                            mode="tags"
+                            placeholder={"Values"}
+                            value={extraItem.values}
+                            style={{width: '100%'}}
+                            onChange={(value) => setExtra([
+                                ...extra.slice(0, extraIndex),
+                                {...extraItem, values: value},
+                                ...extra.slice(extraIndex+1)
+                            ])}
+                        />
+                    </Col>
+
+                </Row>
+            )}
+
+            
+
+
             <Form.Item wrapperCol={{
                 offset: 8,
                 span: 8
             }}>
-                <Button type="primary" htmlType="submit">
-                    Submit
-                </Button>
-                <Button htmlType="reset">
-                    Reset
-                </Button>
+            <Button
+                type="dashed"
+                onClick={() => setExtra([...extra, {prop: 'KEY', values: []}])}
+                style={{ width: '100%', marginTop: 10, marginBottom: 20 }}
+                icon={<PlusOutlined />}
+            >
+                Add field
+            </Button>
+                <Space>
+                    <Button type="primary" htmlType="submit">
+                        Submit
+                    </Button>
+                    <Button htmlType="reset">
+                        Reset
+                    </Button>
+                </Space>
             </Form.Item>
+
+
+            <Row>
+                <Col span={8} offset={8}><pre>{ JSON.stringify(extra, null ,4) }</pre></Col>
+            </Row>
         </Form>
     </Spin>
 }

@@ -1,6 +1,6 @@
 import json
 from os import listdir
-from os.path import isdir, join
+from os.path import basename, dirname, isdir, join
 from time import sleep
 
 config_file = open("config.json")
@@ -31,7 +31,23 @@ def stream_file(file, stream=True):
 
 def get_run_params(run_dir):
     with open(join(run_dir, "config.json")) as f:
-        return json.load(f)
+        config = json.load(f)
+    
+    fixed = False
+    # Fix run config
+    if "runId" not in config:
+        config['runId'] = basename(dirname(run_dir)) + "/" + basename(run_dir)
+        fixed = True
+    if "resultId" not in config:
+        config['resultId'] = basename(dirname(run_dir))
+        fixed = True
+        
+    # Resave config file if fixed
+    if fixed:
+        with open(join(run_dir, "config.json"), 'w') as f:
+            json.dump(config, f)
+
+    return config
 
 
 

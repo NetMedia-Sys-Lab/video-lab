@@ -45,6 +45,7 @@ export type RunDataType = {
     runId: string
     run_config: RunConfig
     num_stall: number
+    num_quality_switches: number
     dur_stall: number
     states: [RunStateType]
     tc_stats: [{

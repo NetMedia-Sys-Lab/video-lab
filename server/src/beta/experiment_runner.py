@@ -12,7 +12,7 @@ from pprint import pprint
 from random import shuffle
 from subprocess import check_call, check_output
 from time import sleep, time
-from typing import List, TypedDict, Iterable
+from typing import List, TypedDict, Iterable, Any
 from flask import Flask
 from src.job_framework.server.job_manager_server import JobManagerServer
 from src.job_framework.jobs.job_python import PythonJob, register_python_job
@@ -44,6 +44,8 @@ class RunsConfig(TypedDict):
     serverImages: List[str]
     serverLogLevel: str
     calculateVmaf: bool
+    extra: dict[str, List[str]]
+    
 
 
 class RunConfig(TypedDict):
@@ -69,9 +71,10 @@ class RunConfig(TypedDict):
 @register_python_job()
 def docker_compose_up(run_config: RunConfig):
     network_id = network_ids.get()
+    # sleep(1)
     print(f"{network_id=}")
+    project_name = f"{int(time()*1000000)}_beta-emulator-quic"
     try:
-        project_name = f"{int(time()*1000000)}_beta-emulator-quic"
         proc = subprocess.Popen(
             f"docker compose -f {CONFIG['headlessPlayer']['dockerCompose']} -p {project_name} up --abort-on-container-exit",
             shell=True,
@@ -91,6 +94,9 @@ def docker_compose_up(run_config: RunConfig):
                 f"Docker Compose returned non zero return code : {proc.returncode}")
 
     finally:
+        subprocess.check_call(f"docker compose -f {CONFIG['headlessPlayer']['dockerCompose']} -p {project_name} rm -f -s", shell=True)
+        subprocess.check_call(f"docker network rm {project_name}_default", shell=True)
+        sleep(1)
         network_ids.put(network_id)
 
 
@@ -130,7 +136,7 @@ class ExperimentRunner:
                 pass
 
     def to_list_of_runs(self, runs_config: RunsConfig) -> List[RunConfig]:
-        configs: List[RunConfig] = [{}]
+        configs: Any = [{}]
 
         def multiply(run_configs, values: Iterable, prop):
             return [{**rc, prop: val} for val in values for rc in run_configs]
@@ -144,15 +150,14 @@ class ExperimentRunner:
         configs = multiply(configs, runs_config['lengths'], 'length')
         configs = multiply(configs, runs_config['beta'], 'beta')
         configs = multiply(configs, runs_config['videos'], 'video')
-        configs = multiply(configs, range(
-            1, runs_config['repeat'] + 1), 'attempt')
+        configs = multiply(configs, range(1, runs_config['repeat'] + 1), 'attempt')
         configs = multiply(configs, [runs_config['resultId']], 'resultId')
-        configs = multiply(
-            configs, [runs_config['serverLogLevel']], 'serverLogLevel')
-        configs = multiply(
-            configs, [runs_config['calculateVmaf']], 'calculateVmaf')
-        configs = multiply(configs, runs_config.get(
-            'serverImages', ['server_aioquic:latest']), 'serverImage')
+        configs = multiply(configs, [runs_config['serverLogLevel']], 'serverLogLevel')
+        configs = multiply(configs, [runs_config['calculateVmaf']], 'calculateVmaf')
+        configs = multiply(configs, runs_config.get('serverImages', ['server_aioquic:latest']), 'serverImage')
+
+        for prop, vals in runs_config.get('extra', {}).items():
+            configs = multiply(configs, vals, prop)
 
         configs = list(
             filter(lambda c: c['beta'] or c['protocol'] != "quic", configs))
@@ -166,8 +171,7 @@ class ExperimentRunner:
             )
             config['runId'] = config['resultId'] + "/" + config['runId']
             url = f"https://server:443/videos/{config['codec']}"
-            if config['length'] == 2:
-                url += "-2sec"
+            url += f"-{config['length']}sec"
             url += f"/{config['video']}/output-beta.mpd"
             config['target'] = url
 
@@ -212,6 +216,6 @@ class ExperimentRunner:
             ))
             print(f"Scheduled {run_config['runId']}")
             scheduled_runs.append(run_config['runId'])
-            sleep(0.5)
+            sleep(0.01)
 
         return scheduled_runs

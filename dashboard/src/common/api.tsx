@@ -178,6 +178,11 @@ export const calculateRunQuality = async (runIds: string[]) => {
     return await response.json();
 }
 
+export const createTilesVideo =async (runIds: string[]) => {
+    const response = await fetch(`${HeadlessPlayerApi}/runs/create-tiles?runs=${euc(runIds.join(","))}`);
+    return await response.json();
+}
+
 export const makeKibanaQuery = (options: KibanaQuery) => {
     let query = "";
     query += `run_id:(${options.runIds.join(" or ")})`
@@ -196,3 +201,4 @@ export const makeKibanaLink = (options: KibanaQuery) =>
     `http://localhost:5601/app/logs/stream?logFilter=(language:kuery,query:${euc(`'${makeKibanaQuery(options)}'`)})`;
 
 export const playbackVideoUrl = (runId: string) => `${ApiBase}/static/runs/${runId}/downloaded/playback_buffering.mp4`
+

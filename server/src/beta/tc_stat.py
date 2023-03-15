@@ -1,9 +1,9 @@
 # EVENT TC_STAT 1658291634599 class prio 1:1 parent 1: Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) backlog 0b 0p requeues 0 class prio 1:2 parent 1: Sent 84 bytes 2 pkt (dropped 0, overlimits 0 requeues 0) backlog 0b 0p requeues 0 class prio 1:3 parent 1: leaf 2: Sent 1621946 bytes 1427 pkt (dropped 193, overlimits 0 requeues 0) backlog 0b 0p requeues 0 class netem 2:1 parent 2: leaf 3: class tbf 3:1 parent 3: qdisc prio 1:[00010000] root refcnt 33 bands 3 priomap 1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1 Sent 1622030 bytes 1429 pkt (dropped 193, overlimits 0 requeues 0) backlog 0b 0p requeues 0 qdisc netem 2:[00020000] parent 1:3 limit 1000 delay 75.0ms Sent 1621946 bytes 1427 pkt (dropped 193, overlimits 0 requeues 0) backlog 0b 0p requeues 0 qdisc tbf 3:[00030000] parent 2:1 rate 250Kbit burst 3000b/1 mpu 0b [0016e360] lat 864.0ms limit 30000b linklayer ethernet Sent 1621946 bytes 1427 pkt (dropped 193, overlimits 10081 requeues 0) backlog 0b 0p requeues 0
 
-from itertools import chain
 import re
+from itertools import chain
 
-from exp_common.exp_events import ExpEvent_TcStat
+from istream_player.modules.analyzer.exp_events import ExpEvent_TcStat
 
 
 class TcStat:

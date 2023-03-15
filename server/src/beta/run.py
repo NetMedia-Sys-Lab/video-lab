@@ -1,20 +1,22 @@
-from inspect import FrameInfo
 import inspect
 import json
 import logging
 import os
+from pprint import pprint
 import re
 import shutil
 from datetime import datetime
 from functools import cache, cached_property
+from inspect import FrameInfo
 from os.path import join
 from pathlib import Path
 from subprocess import check_output
-from typing import Union, Optional, List
+from typing import List, Optional, Union
+
 import numpy as np
 import pandas as pd
-from exp_common.exp_events import ExpEvent_BwSwitch, ExpEvent_TcStat
-from exp_common.exp_recorder import ExpReader
+from istream_player.modules.analyzer.exp_events import (ExpEvent_BwSwitch, ExpEvent_TcStat)
+from istream_player.modules.analyzer.exp_recorder import ExpReader
 from typing_extensions import Self
 
 from src.beta.experiment_runner import RunConfig
@@ -64,28 +66,15 @@ def run_if_mod(file_paths: List[str]):
 
 class Run:
     log = logging.getLogger("Run")
+    run: str
+    result: str
 
-    def __init__(self, run: Union[str, dict[str, str], Self], result: Optional[str] = None) -> None:
-        self.run: str = None
-        self.result: str = None
-        self.start_time = 0
-        if result is None and run is not None:
-            if isinstance(run, dict):
-                self.run = run["run"]
-                self.result = run["result"]
-            elif isinstance(run, str):
-                arr = run.split("/")
-                self.run: str = arr[1]
-                self.result: str = arr[0]
-            elif isinstance(run, self.__class__):
-                self.run = run.run
-                self.result = run.result
-        elif result is not None and run is not None:
-            self.run: str = run
-            self.result: str = result
+    start_time: float
 
-        if self.run is None or self.result is None:
-            raise Exception(f"Cannot parse Run run={run}, result={result}")
+    def __init__(self, run_id: str) -> None:
+        arr = run_id.split("/")
+        self.run: str = arr[1]
+        self.result: str = arr[0]
 
     def __str__(self) -> str:
         return f"{self.result}/{self.run}"
@@ -100,7 +89,18 @@ class Run:
         @run_if_mod([json_file])
         def result():
             with open(json_file) as f:
-                return json.load(f)
+                d = json.load(f)
+                min_time = min(map(lambda s: s['start_time'], d['segments']))
+                for seg in d['segments']:
+                    seg['start_time'] -= min_time
+                    seg['stop_time'] -= min_time
+                    seg['first_byte_at'] -= min_time
+                    seg['last_byte_at'] -= min_time
+                    seg['start'] = seg['start_time']
+                    seg['end'] = seg['stop_time']
+                pprint(d['segments'])
+                return d
+
         return result()
 
     @property
@@ -118,9 +118,14 @@ class Run:
     def segments_df(self):
         df = pd.DataFrame(self.details["segments"])
         df.set_index('index', inplace=True)
-        df["duration"] = df["end"] - df["first_byte_at"]
-        df["pending_duration"] = df["last_byte_at"] - df["end"]
-        df["first_byte_delay"] = df["first_byte_at"] - df["start"]
+        t0 = df['start_time'].min()
+        df['start_time'] -= t0
+        df['stop_time'] -= t0
+        df['first_byte_at'] -= t0
+        df['last_byte_at'] -= t0
+        df["duration"] = df["stop_time"] - df["first_byte_at"]
+        df["pending_duration"] = df["last_byte_at"] - df["stop_time"]
+        df["first_byte_delay"] = df["first_byte_at"] - df["start_time"]
         return df
 
     @property
@@ -157,12 +162,15 @@ class Run:
             tc_stat_logs = ExpReader(event_log_file)
             max_time = 120 * 1000
             i = 0
-            for event in tc_stat_logs.read_events():
-                if isinstance(event, ExpEvent_TcStat):
-                    event.time_rel = int(event.time) - self.start_time
-                    tc_stats.append(TcStat(event))
-                    if event.time_rel >= max_time:
-                        break
+            try:
+                for event in tc_stat_logs.read_events():
+                    if isinstance(event, ExpEvent_TcStat):
+                        event.time_rel = int(event.time) - self.start_time
+                        tc_stats.append(TcStat(event))
+                        if event.time_rel >= max_time:
+                            break
+            except FileNotFoundError:
+                self.log.warn("TC_Stats file not found")
             return tc_stats
         return result()
 
@@ -250,7 +258,7 @@ class Run:
         path = join(self.run_dir, 'vmaf')
         Path(path).mkdir(exist_ok=True)
         return path
-
+    
     @cached_property
     def frames_dir(self):
         path = join(self.run_dir, 'frames')
@@ -260,8 +268,7 @@ class Run:
     @cached_property
     def original_video_dir(self):
         path = join(dataset_dir, 'videos', self.run_config['codec'])
-        if int(self.run_config['length']) == 2:
-            path += "-2sec"
+        path += f"-{self.run_config['length']}sec"
         path = join(path, self.run_config['video'])
         return path
 
@@ -293,44 +300,44 @@ class Run:
             print(f"Failed to delete {self}")
             raise e
 
-    def get_logs(self):
-        logs = []
-        log_file = join(results_dir, self.result, self.run, "player_logs.txt")
-        p = re.compile(
-            '^(\d\d\d\d\-\d\d\-\d\d \d\d:\d\d:\d\d,\d\d\d)\s+(\w+)\s+(INFO|DEBUG|ERROR):(.+)$')
+    # def get_logs(self):
+    #     logs = []
+    #     log_file = join(results_dir, self.result, self.run, "player_logs.txt")
+    #     p = re.compile(
+    #         '^(\d\d\d\d\-\d\d\-\d\d \d\d:\d\d:\d\d,\d\d\d)\s+(\w+)\s+(INFO|DEBUG|ERROR):(.+)$')
 
-        time = 0
-        tags = []
-        type = "INFO"
+    #     time = 0
+    #     tags = []
+    #     type = "INFO"
 
-        ev_playback_start = self.get_events("PLAYBACK_START")
-        if len(ev_playback_start) > 0:
-            time_start = ev_playback_start[0]["time"]
-        else:
-            time_start = 0
+    #     ev_playback_start = self.get_events("PLAYBACK_START")
+    #     if len(ev_playback_start) > 0:
+    #         time_start = ev_playback_start[0]["time"]
+    #     else:
+    #         time_start = 0
 
-        with open(log_file) as f:
-            for line in f:
-                m = p.match(line)
-                if m:
-                    time_abs = datetime.strptime(
-                        m.group(1), '%Y-%m-%d %H:%M:%S,%f').timestamp() * 1000
-                    if time_start == 0:
-                        time_start = time_abs
-                    time = (time_abs - time_start) / 1000
-                    tags = [m.group(2)]
-                    type = m.group(3)
-                    text = m.group(4)
-                else:
-                    text = line
-                logs.append({
-                    "time": time,
-                    "tags": tags,
-                    "type": type,
-                    "text": text
-                })
+    #     with open(log_file) as f:
+    #         for line in f:
+    #             m = p.match(line)
+    #             if m:
+    #                 time_abs = datetime.strptime(
+    #                     m.group(1), '%Y-%m-%d %H:%M:%S,%f').timestamp() * 1000
+    #                 if time_start == 0:
+    #                     time_start = time_abs
+    #                 time = (time_abs - time_start) / 1000
+    #                 tags = [m.group(2)]
+    #                 type = m.group(3)
+    #                 text = m.group(4)
+    #             else:
+    #                 text = line
+    #             logs.append({
+    #                 "time": time,
+    #                 "tags": tags,
+    #                 "type": type,
+    #                 "text": text
+    #             })
 
-        return {
-            "time_start": time_start / 1000,
-            "logs": logs
-        }
+    #     return {
+    #         "time_start": time_start / 1000,
+    #         "logs": logs
+    #     }

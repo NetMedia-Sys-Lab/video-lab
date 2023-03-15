@@ -1,6 +1,6 @@
 import asyncio
-from asyncio import subprocess
 import json
+import subprocess
 from threading import Thread
 from os.path import join
 from flask import Flask, request, jsonify, Response, send_from_directory
@@ -110,3 +110,12 @@ class HeadlessPlayerApi:
                 ["wireshark", "-k", "-i", "-"], stdin=p1.stdout)
             p2.communicate()
             return jsonify({"status": "success"})
+        
+        @self.app.get("/headless-player/runs/create-tiles")
+        def create_tiles():
+            run_ids = request.args['runs'].split(",")
+            self.job_manager.schedule(PythonJob(config={
+                'callback': Codec.create_tiles_video.__name__,
+                "args": (run_ids,),
+                'kwargs': {}
+            }))

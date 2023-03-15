@@ -1,6 +1,7 @@
 import asyncio
 import json
 from os import listdir
+from os.path import basename, dirname, join
 import os
 from threading import Thread
 from flask import Flask, request, jsonify
@@ -8,6 +9,7 @@ from src.job_framework.server.job_manager_server import JobManagerServer
 from src.job_framework.jobs.job_python import PythonJob
 
 from src.beta.beta import replace_beta_parameters
+from src.util.ffmpeg import Ffmpeg
 
 
 config_file = open("config.json")
@@ -49,21 +51,50 @@ class Dataset:
         def _create_mpd():
             paths = request.args['paths'].split(",")
 
-            async def await_tasks():
-                tasks = []
-                for path in paths:
-                    job = self.job_manager.schedule(PythonJob(
-                        config={
-                            "callback": replace_beta_parameters.__name__,
-                            "args": (path,),
+            for path in paths:
+                self.job_manager.schedule(PythonJob(
+                    config={
+                        "callback": replace_beta_parameters.__name__,
+                        "args": (path,),
+                        "kwargs": {},
+                        "name": f"BETA_mpd_{path.rsplit('/', 1)[-1]}"
+                    }
+                ))
+            return jsonify({'message': f"Scheduled {len(paths)} BETA parameter calculations"})
+
+        @self.app.post("/dataset/video/encode/hevc")
+        def _encode_hevc():
+            data = request.get_json(force=True)
+            paths = data["paths"]
+            bitrates = data["bitrates"]
+            resolutions = data["resolutions"]
+            seg_length = int(data["segLength"])
+
+            for path in paths:
+                for i, bitrate in enumerate(bitrates):
+                    self.job_manager.schedule(PythonJob(
+                        config = {
+                            "callback": Ffmpeg.encode_hevc_video.__name__,
+                            "args": (join(path, "video.y4m"), int(bitrate), resolutions[i], seg_length),
                             "kwargs": {},
-                            "name": f"BETA_mpd_{path.rsplit('/', 1)[-1]}"
+                            "name": f"Encode_HEVC_{basename(path)}_{seg_length}_{bitrate}bps"
                         }
                     ))
-                    tasks.append(job.wait_for_output())
-                await asyncio.gather(*tasks)
-            Thread(
-                target=self.loop.run_until_complete,
-                args=(await_tasks(),),
-                daemon=True).start()
-            return jsonify({'message': f"Scheduled {len(paths)} BETA parameter calculations"})
+
+        @self.app.post("/dataset/video/dash")
+        def _create_dash_playlist():
+            data = request.get_json(force=True)
+            paths = data["paths"]
+            seg_length = int(data["segLength"])
+
+            for path in paths:
+                source_paths = [ join(f.path, "video.hevc") for f in os.scandir(join(path, "DROP0")) if f.is_dir() ]
+                for source_path in source_paths:
+                    self.job_manager.schedule(PythonJob(
+                        config = {
+                            "callback": Ffmpeg.create_dash_playlist.__name__,
+                            "args": (source_path, seg_length),
+                            "kwargs": {},
+                            "name": f"Create_DASH_{basename(dirname(dirname(dirname(source_path))))}_{seg_length}_{dirname(source_path)}"
+                        }
+                    ))

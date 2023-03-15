@@ -17,13 +17,13 @@ thread_proxies_stdout = {}
 thread_proxies_stderr = {}
 
 class MuxedStream(threading.Thread):
-    def __init__(self, name, parent_stream):
+    def __init__(self, name: str, parent_stream):
         super(MuxedStream, self).__init__(daemon=True)
         self.done = False
         self.read_fd, self.write_fd = os.pipe()
         self.writer = os.fdopen(self.write_fd, 'w')
         self.reader = os.fdopen(self.read_fd)
-        self.prefix = name + " "
+        self.prefix = (name + " ").encode('utf-8')
         self.parent_stream = parent_stream
         self.start()
 
@@ -34,7 +34,7 @@ class MuxedStream(threading.Thread):
         try:
             while line := self.reader.readline():
                 self.parent_stream.write(self.prefix)
-                self.parent_stream.write(line)
+                self.parent_stream.write(line.encode('utf-8'))
         except:
             print(traceback.format_exc())
             pass

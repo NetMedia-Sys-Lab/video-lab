@@ -2,12 +2,14 @@ import json
 import os
 from os.path import join
 from pprint import pprint
-from typing import Union, Dict
+from typing import Dict, Union
 
-from exp_common.exp_events import ExpEvent_Progress, ExpEvent_State
-from exp_common.exp_recorder import ExpReader
+from istream_player.modules.analyzer.exp_events import (ExpEvent_Progress,
+                                                     ExpEvent_State)
+from istream_player.modules.analyzer.exp_recorder import ExpReader
 from flask import Flask
-from watchdog.events import FileSystemEventHandler, DirCreatedEvent, FileCreatedEvent
+from watchdog.events import (DirCreatedEvent, FileCreatedEvent,
+                             FileSystemEventHandler)
 from watchdog.observers import Observer
 
 from src.state_manager import StateManager

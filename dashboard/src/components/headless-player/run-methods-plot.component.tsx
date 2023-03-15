@@ -1,21 +1,20 @@
 import "./style.scss"
 
-import { Radio, Select, Spin } from "antd"
+import { Button, Select, Space } from "antd"
 import { useEffect, useMemo, useState } from "react"
-import { useGetRunsData } from "../../common/api"
-import { RunDataType } from "../../types/run-data.type"
 import {
     COLORS
 } from "../../types/plot.type"
-import { DataFrame } from "../plotter/dataframe"
-import { D3PlotComponent } from "../plotter/d3-plot.component"
+import { RunDataType } from "../../types/run-data.type"
 import { D3PlotBase } from "../plotter/d3-plot-base"
+import { D3PlotComponent } from "../plotter/d3-plot.component"
+import { DataFrame } from "../plotter/dataframe"
 
 function commonPrefixIndex(strs: string[]) {
     const tokens = strs.map(s => s.split("_"))
     const minLength = Math.min(...tokens.map(t => t.length))
     for (let i = 0; i < minLength; i++) {
-        for(let j=0;j<tokens.length;j++) {
+        for (let j = 0; j < tokens.length; j++) {
             if (tokens[j][i] !== tokens[0][i]) {
                 return i;
             }
@@ -27,10 +26,10 @@ function commonPrefixIndex(strs: string[]) {
 function commonSuffixIndex(strs: string[]) {
     const tokens = strs.map(s => s.split("_"))
     const minLength = Math.min(...tokens.map(t => t.length))
-    for (let i = minLength-1; i >= 0; i--) {
-        for(let j=0;j<tokens.length;j++) {
+    for (let i = minLength - 1; i >= 0; i--) {
+        for (let j = 0; j < tokens.length; j++) {
             if (tokens[j][i] !== tokens[0][i]) {
-                return i+1;
+                return i + 1;
             }
         }
     }
@@ -69,7 +68,7 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         runsData.forEach((runData, index) => {
             runColors[runData.runId] = COLORS[index % COLORS.length]
         })
-        
+
         const names = plotData.map(r => r.run_config.runId.split("/").join("_"))
         const cpi = commonPrefixIndex(names)
         const csi = commonSuffixIndex(names)
@@ -81,7 +80,7 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 if (r.run_config.protocol === "tcp") {
                     method = "beta"
                 } else {
-                    method = "quic"
+                    method = "tasq"
                 }
             } else if (r.run_config.protocol !== "tcp") {
                 throw Error("Found run over non beta and quic")
@@ -99,9 +98,14 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 vmaf: r.vmaf.mean,
                 vmafLoss: (100 - r.vmaf.mean),
                 durMicroStall: r.micro_stalls.total_stall_duration * 1000,
+                numSwitches: r.num_quality_switches,
                 durStall: r.dur_stall * 1000 + r.micro_stalls.total_stall_duration * 1000,
-                durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration)*100/(r.segments.length*r.run_config.length),
-                quality: new DataFrame(r.segments).avgField(r => r.quality)
+                durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration) * 100 / (r.segments.length * r.run_config.length),
+                quality: new DataFrame(r.segments).avgField(r => 6-r.quality),
+                quality_std: new DataFrame(r.segments).std(r => r.quality),
+                bitrate: new DataFrame(r.segments).avgField(r => r.bitrate),
+                bitrate_std: new DataFrame(r.segments).std(r => r.bitrate),
+                K_MAXIMUM_WINDOW: parseInt(r.run_config.K_MAXIMUM_WINDOW)
             } as PlotFields
         }, "name")
     }, [runsData])
@@ -112,45 +116,102 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         const plots: D3PlotBase<any>[] = []
 
         if (xAxis === null) {
-            df.col(plotType.split(" ")[0] as any).plotBar(plots, {yLabel: plotType});
+            df.col(plotType.split(" ")[0] as any).plotBar(plots, { yLabel: plotType });
         } else {
             const indexField = xAxis.split(" ")[0] as keyof PlotFields
             const plotField = plotType.split(" ")[0]
-            const dfGroup = df.groupBy(r => r.method).mapGroups(
-                (method, df1) => df1.groupBy(r => r[indexField]!)
-                    .reduce((groupByValue, df2) => ({
-                        method: method,
-                        [indexField]: groupByValue,
-                        [plotField]: df2.avgField(r => r[plotField as keyof PlotFields]!)
-                    }), indexField)
-            )
-            dfGroup.col(plotField as any).plotBar(plots, {xLabel: xAxis, yLabel: plotType})
+            if (plotField === "durStall") {
+                const dfGroup = df.groupBy(r => r.method).mapGroups(
+                    (method, df1) => {
+                        return df1.groupBy(r => r[indexField]!)
+                            .reduce((groupByValue, df2) => ({
+                                method: method,
+                                [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+                                "durStall": df2.avgField(r => r.durStall! / 1000),
+                                "durBuffStall": df2.avgField(r => r.durBuffStall! / 1000),
+                            }), indexField)
+                    }
+                )
+                console.log(dfGroup)
+                dfGroup.col("durStall").plotBar(plots, {
+                    xLabel: xAxis, yLabel: "Stall in sec", opacity: 0.3,
+                    legendLabels: { 'tasq': 'TASQ Stutter', 'beta': 'BETA Stutter', 'dash': 'DASH Stutter' }
+                })
+                dfGroup.col("durBuffStall").plotBar(plots, { legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } })
+            } else {
+                const dfGroup = df.groupBy(r => r.method).mapGroups(
+                    (method, df1) => {
+                        const ret = df1.groupBy(r => r[indexField]!)
+                            .reduce((groupByValue, df2) => ({
+                                method: method,
+                                [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+                                [plotField]: df2.avgField(r => r[plotField as keyof PlotFields]!),
+                                "durBuffStall": df2.avgField(r => r.durBuffStall!),
+                            }), indexField)
+                        return ret
+                    }
+                )
+                dfGroup.col(plotField as any).plotBar(plots, { xLabel: xAxis, yLabel: plotType, legendLabels: { 'tasq': 'TASQ', 'beta': 'BETA', 'dash': 'DASH' } })
+            }
         }
 
         setPlots(plots)
     }, [plotType, xAxis, df])
 
+    function downloadJson() {
+        const indexField = xAxis!.split(" ")[0] as keyof PlotFields
+        const columns = ["durBuffStall", "durMicroStall", "durStall", "durStallPerc", "numBuffStall", "numSwitches", "vmaf", "vmafLoss", "quality", "quality_std", "bitrate", "bitrate_std"]
+        const result = df!.groupBy(r => r[indexField]!)
+            .reduce((groupByValue, df2) => columns.reduce((o, key) => Object.assign(o, {
+                [key]: df2.avgField(r => r[key as keyof PlotFields]!),
+            }), {
+                [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+            }), indexField).rows
+
+        const fileName = "data.json";
+        const json = JSON.stringify(result, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const href = URL.createObjectURL(blob);
+
+        // create "a" HTLM element with href to file
+        const link = document.createElement("a");
+        link.href = href
+        link.download = fileName
+        document.body.appendChild(link);
+        link.click();
+
+        // clean up "a" element & remove ObjectURL
+        document.body.removeChild(link);
+        URL.revokeObjectURL(href);
+    }
+
     return <>
         X Axis &nbsp;&nbsp;&nbsp;
-        <Select style={{width: "200px"}} placeholder="X Axis" defaultValue={xAxis} onChange={e => setGroupBy(e)}>
+        <Select style={{ width: "200px" }} placeholder="X Axis" defaultValue={xAxis} onChange={e => setGroupBy(e)}>
             <Select.Option value={null}>None</Select.Option>
             <Select.Option value={"resultId"}>Result ID</Select.Option>
             <Select.Option value={"video"}>Video</Select.Option>
             <Select.Option value={"bufferSetting"}>Buffer Setting</Select.Option>
             <Select.Option value={"codec"}>Codec</Select.Option>
             <Select.Option value={"segLength (s)"}>Segment Length</Select.Option>
+            <Select.Option value={"K_MAXIMUM_WINDOW (bytes)"}>K_MAXIMUM_WINDOW</Select.Option>
         </Select> <br />
         Y Axis &nbsp;&nbsp;&nbsp;
-        <Radio.Group size="large" onChange={(e) => setPlotType(e.target.value)} value={plotType}>
-            <Radio.Button value="durBuffStall (ms)">Duration of Buffering Stalls (ms)</Radio.Button>
-            <Radio.Button value="durMicroStall (ms)">Duration of Micro Stalls (ms)</Radio.Button>
-            <Radio.Button value="durStall (ms)">Duration of All Stalls (ms)</Radio.Button>
-            <Radio.Button value="durStallPerc (%)">Duration of All Stalls (%)</Radio.Button>
-            <Radio.Button value="numBuffStall">Number of Buffering Stalls</Radio.Button>
-            <Radio.Button value="vmaf (%)">VMAF (%)</Radio.Button>
-            <Radio.Button value="vmafLoss (%)">VMAF Loss (%)</Radio.Button>
-            <Radio.Button value="quality">Quality Level</Radio.Button>
-        </Radio.Group>
-        <D3PlotComponent plots={plots}></D3PlotComponent>
+        <Space>
+            <Select style={{ width: "200px" }} placeholder="Y Axis" onChange={(e) => setPlotType(e)} value={plotType}>
+                <Select.Option value="durBuffStall (ms)">Duration of Buffering Stalls (ms)</Select.Option>
+                <Select.Option value="durMicroStall (ms)">Duration of Micro Stalls (ms)</Select.Option>
+                <Select.Option value="durStall (ms)">Duration of All Stalls (ms)</Select.Option>
+                <Select.Option value="durStallPerc (%)">Duration of All Stalls (%)</Select.Option>
+                <Select.Option value="numBuffStall">Number of Buffering Stalls</Select.Option>
+                <Select.Option value="numSwitches">Number of Switches</Select.Option>
+                <Select.Option value="vmaf (%)">VMAF (%)</Select.Option>
+                <Select.Option value="vmafLoss (%)">VMAF Loss (%)</Select.Option>
+                <Select.Option value="quality">Quality Level</Select.Option>
+                <Select.Option value="bitrate">Bitrate</Select.Option>
+            </Select>
+            <Button onClick={downloadJson}>Download JSON</Button>
+        </Space>
+        <D3PlotComponent plots={plots} ></D3PlotComponent>
     </>
 }

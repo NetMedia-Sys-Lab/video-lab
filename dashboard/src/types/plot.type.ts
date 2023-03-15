@@ -30,6 +30,7 @@ export declare type AccFn<T, T2> = (r: T, i: number) => T2
 export declare type Acc<T,T2=(string | number | boolean)> = AccFn<T,T2> | T2;
 
 export declare type ExtentType = [number, number] | string[]
+export declare type LegendType = {[id: string]: {label: string, color: string, opacity: number}}
 
 export declare type D3RectParams = {
     x: number

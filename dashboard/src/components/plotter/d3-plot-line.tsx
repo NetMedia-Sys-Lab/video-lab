@@ -20,7 +20,6 @@ export declare type D3PlotLineProps<T> = D3PlotBaseProps<T> & {
 export class D3PlotLine<T> extends D3PlotBase<T> {
     xAcc: Acc<T>
     yAcc: Acc<T>
-    colors: Acc<T>[]
 
     opacity?: Acc<T>
     text?: Acc<T>

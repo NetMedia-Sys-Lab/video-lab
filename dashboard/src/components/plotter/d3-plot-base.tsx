@@ -1,5 +1,5 @@
 import { DataFrame, DataFrameGroups } from "./dataframe";
-import { D3LineParams, D3RectParams, D3SelectionType, D3TextParams, ExtentType, PlotItemSelectCallback } from "../../types/plot.type";
+import { Acc, COLORS, D3LineParams, D3RectParams, D3SelectionType, D3TextParams, ExtentType, PlotItemSelectCallback } from "../../types/plot.type";
 import * as d3 from "d3";
 import { D3Plot } from "./d3-plot";
 
@@ -8,7 +8,9 @@ export declare type D3PlotBaseProps<T> = {
     axisIndex?: number,
     fix?: boolean,
     xLabel?: string
-    yLabel?: string
+    yLabel?: string,
+    colors?: Acc<T, string>[]
+    legendLabels?: {[gid: string]: string};
 }
 
 export abstract class D3PlotBase<T> {
@@ -18,6 +20,8 @@ export abstract class D3PlotBase<T> {
     fix: boolean;
     xLabel: string;
     yLabel: string;
+    colors: Acc<T, string>[];
+    legendLabels: {[gid: string]: string};
 
     // After plotting
     plotSelections: {
@@ -38,6 +42,16 @@ export abstract class D3PlotBase<T> {
         this.fix = props.fix || false;
         this.xLabel = props.xLabel || "";
         this.yLabel = props.yLabel || "";
+        this.colors = props.colors || COLORS;
+        if(!props.legendLabels) {
+            this.legendLabels = {};
+            this.dfGroups.forEach((gid) => {
+                this.legendLabels[gid] = gid;
+            })
+        } else {
+            this.legendLabels = props.legendLabels;
+        }
+
     }
 
     abstract draw(plot: D3Plot, yScale: d3.ScaleLinear<any, any, any>): void;

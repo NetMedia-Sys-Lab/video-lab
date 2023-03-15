@@ -21,7 +21,7 @@ import {
 } from "antd";
 
 import { DeleteOutlined, ExperimentOutlined } from '@ant-design/icons';
-import { calculateRunQuality, deleteRuns, encodePlayback, postNewRunConfig, useGetAllResults, useStateSocket } from "../../common/api";
+import { calculateRunQuality, createTilesVideo, deleteRuns, encodePlayback, postNewRunConfig, useGetAllResults, useStateSocket } from "../../common/api";
 import { RunConfig, RunOrResult, RunsFilterType } from "../../types/result.type";
 import { ColumnsType } from "antd/lib/table";
 import { Link } from "react-router-dom";
@@ -136,9 +136,16 @@ export const HeadlessPlayerComponent = () => {
                         message: response.message || JSON.stringify(response)
                     });
                 }}>Encode Playback</Button>
-                <Button disabled={selectedRuns.length == 0} key="3" type="primary"
+                <Button disabled={selectedRuns.length === 0} key="3" type="primary"
                     href={makeHeadlessPlayerComparePath(selectedRuns.map(run => run.runId))}>Plot
                     Selected</Button>
+                <Button disabled={selectedRuns.length === 0} key="6" type="primary"
+                    onClick={async () => {
+                        const response = createTilesVideo(selectedRuns.map(run => run.runId))
+                        await notification.success({
+                            message: "Success " + JSON.stringify(response)
+                        });
+                    }}>Create Video Tiles</Button>
             </Space>
             <div ref={tabsContainerRef} style={{ flexGrow: '1' }}>
                 <Tabs defaultActiveKey="1" size={"large"} activeKey={activeTab} onChange={key => setActiveTab(key)}>

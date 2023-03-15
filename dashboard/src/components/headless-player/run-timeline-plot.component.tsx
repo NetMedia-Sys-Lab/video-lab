@@ -1,8 +1,11 @@
-import "./style.scss"
+import "./style.scss";
 
-import { Alert, Badge, Button, Card, Collapse, Drawer, Result, Select, Spin, Switch, Tabs, Typography } from "antd";
+import { SettingOutlined } from '@ant-design/icons';
+import { Alert, Badge, Button, Card, Collapse, Drawer, Select, Switch } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
-import { makeKibanaLink, StaticApi, useGetRunsData } from "../../common/api";
+import { StaticApi, makeKibanaLink } from "../../common/api";
+import { makeVideoInspectorPath } from "../../pages/video-inspector/video-inspector.component";
+import { COLORS, MarkerUpdateCallback, objectMap } from "../../types/plot.type";
 import {
     RunBwActualType,
     RunBwEstimatedType,
@@ -10,12 +13,9 @@ import {
     RunSegmentType,
     RunStateType
 } from "../../types/run-data.type";
-import { COLORS, MarkerUpdateCallback, objectMap } from "../../types/plot.type";
-import { D3PlotComponent } from "../plotter/d3-plot.component";
 import { D3PlotBase } from "../plotter/d3-plot-base";
+import { D3PlotComponent } from "../plotter/d3-plot.component";
 import { DataFrameGroups } from "../plotter/dataframe";
-import { SettingOutlined } from '@ant-design/icons';
-import { makeVideoInspectorPath, VideoInspectorPage } from "../../pages/video-inspector/video-inspector.component";
 import { FramesListComponent } from "../video-tools/frames-list";
 
 
@@ -72,8 +72,10 @@ export const RunTimelinePlotComponent = (props: {
 
         // Create constant color map for each run
         const runColors: { [runKey: string]: string } = {};
+        const legendLabels: {[k: string]: string} = {}
         runsData.forEach((runData, index) => {
             runColors[runData.runId] = COLORS[index % COLORS.length];
+            legendLabels[index] = runData.runId
         })
 
         const plots: D3PlotBase<any>[] = [];
@@ -81,14 +83,18 @@ export const RunTimelinePlotComponent = (props: {
         const segments = new DataFrameGroups<RunSegmentType>(
             objectMap(plotData, (d) => d.segments),
             "start", {
-            colors,
-        });
+                colors,
+                // legendLabels
+            });
+            // .filter(seg => seg.index < 20);
         const states = new DataFrameGroups<RunStateType & { segmentLength: number }>(
             objectMap(plotData, (d) => d.states),
             "time", { colors }
-        ).mapGroups((gid, df) => df.extend({
+            // .filter(state => state.time < 20)
+        )
+        .mapGroups((gid, df) => df.extend({
             segmentLength: () => {
-                return (plotData[gid as any].run_config.length) as number
+                return (plotData[gid as any].run_config.length || 1) as number
             }
         }));
         const bandwidth_actual = new DataFrameGroups<RunBwActualType>(
@@ -104,6 +110,7 @@ export const RunTimelinePlotComponent = (props: {
         );
 
         if (plotConfig.plotDownloads) {
+            console.log("Stored Plot params", segments.plotParams)
             segments.plotBarh(plots, {
                 xAcc: (r) => r.start,
                 spanAcc: (r) => r.first_byte_at - r.start,
@@ -114,7 +121,9 @@ export const RunTimelinePlotComponent = (props: {
                 xAcc: r => r.first_byte_at,
                 spanAcc: r => r.end - r.first_byte_at,
                 yAcc: r => r.index,
-                gridY: true
+                gridY: true,
+                xLabel: "Time (s)",
+                yLabel: "Segment index"
             });
             segments.filter(r => r.stop_ratio < 0.99)
                 .plotBarh(plots, {
@@ -144,6 +153,7 @@ export const RunTimelinePlotComponent = (props: {
             })
         }
         if (plotConfig.plotPosition) {
+            // console.log(states)
             states.plotLine(plots, {
                 yAcc: r => r.position / r.segmentLength,
                 colors
@@ -157,16 +167,16 @@ export const RunTimelinePlotComponent = (props: {
                 opacity: 0.5
             });
         }
-        // console.log(bandwidth_actual.rows, bandwidth_actual.col("bw").rows)
-        const plot = bandwidth_actual
-            .col("bw")
-            .toStep("time")
-            .mapGroups((gid, df) => df.pushRow({
-                time: segments.max("last_byte_at"),
-                bw: df.rows[df.rows.length - 1].bw
-            } as RunBwActualType))
-            .col("bw")
-            .plotLine(plots, { axisIndex: -1 });
+        console.log(bandwidth_actual)
+        // const plot = bandwidth_actual
+        //     .col("bw")
+        //     .toStep("time")
+        //     .mapGroups((gid, df) => df.pushRow({
+        //         time: segments.max("last_byte_at"),
+        //         bw: df.rows.length > 0 ? df.rows[df.rows.length - 1].bw : 0
+        //     } as RunBwActualType))
+        //     .col("bw")
+        //     .plotLine(plots, { axisIndex: -1 });
 
         if (plotConfig.plotEstimatedBw) {
             bandwidth_estimate.col("bandwidth")
@@ -305,11 +315,13 @@ export const RunTimelinePlotComponent = (props: {
             </Collapse>
         </Drawer>
 
-        <Card style={{ border: "1px solid #d9d9d9", 'borderTopStyle': "none" }} className={`plotter-plot`}>
+        <Card  className={`plotter-plot`}>
             {
                 plotError && <Alert type="error" message={plotError} banner />
             }
-            <D3PlotComponent plots={plots} onMarkerUpdate={onMarkerUpdate} onLogsClick={(range) => {
+            <D3PlotComponent plots={plots} 
+            margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+            onMarkerUpdate={onMarkerUpdate} onLogsClick={(range) => {
                 window.open(makeKibanaLink({
                     runIds: plotData.map(runData => runData.runId),
                     time_from: range.start,

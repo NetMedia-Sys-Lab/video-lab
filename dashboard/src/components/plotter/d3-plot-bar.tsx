@@ -20,7 +20,6 @@ export declare type D3PlotBarProps<T> = D3PlotBaseProps<T> & {
 export class D3PlotBar<T> extends D3PlotBase<T> {
     xAcc: Acc<T>
     yAcc: Acc<T>
-    colors: Acc<T>[]
     style: Acc<T, RectStyle>
     class: Acc<T, string>
 
@@ -40,8 +39,9 @@ export class D3PlotBar<T> extends D3PlotBase<T> {
 
     draw(plot: D3Plot, yScale: d3.ScaleLinear<any, any, any>) {
         // const yScaleExtent = yScale.domain();
-
-        const barWidth = 0.8 / this.dfGroups.length;
+        const xScaleExtent = plot.xScale!.domain();
+        const barWidth = 0.8 / this.dfGroups.length; 
+        // const barWidth = Math.max(0.8 / this.dfGroups.length, Math.abs(xScaleExtent[1]-xScaleExtent[0])*0.01);
         this.dfGroups.forEach((gid, df, dfIndex) => {
             const plotDfRect = df.applyAccessors<D3RectParams>({
                 x: this.xAcc,

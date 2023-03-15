@@ -15,3 +15,22 @@ export const createBetaMpd = async (paths: string[])  => {
     const data = await response.json();
     return data;
 }
+
+export const encodeHevcVideos = async (paths: string[], bitrates: number[], resolutions: string[], segLength: number)  => {
+    console.log(bitrates)
+    const response = await fetch(`${DatasetApi}/video/encode/hevc`, {
+        method: "POST",
+        body: JSON.stringify({paths, bitrates, segLength, resolutions})
+    });
+    const data = await response.json();
+    return data;
+}
+
+export const createDashPlaylist = async (paths: string[], segLength: number)  => {
+    const response = await fetch(`${DatasetApi}/video/dash`, {
+        method: "POST",
+        body: JSON.stringify({paths, segLength})
+    });
+    const data = await response.json();
+    return data;
+}

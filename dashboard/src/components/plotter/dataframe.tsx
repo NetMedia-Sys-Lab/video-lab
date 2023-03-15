@@ -1,10 +1,9 @@
 import * as d3 from "d3";
-import React from "react";
-import {Acc, AccFn, ExtentType, objectMap} from "../../types/plot.type";
-import {D3PlotBase} from "./d3-plot-base";
-import {D3PlotBar, D3PlotBarProps} from "./d3-plot-bar";
-import {D3PlotBarh, D3PlotBarhProps} from "./d3-plot-barh";
-import {D3PlotLine, D3PlotLineProps} from "./d3-plot-line";
+import { Acc, AccFn, ExtentType, objectMap } from "../../types/plot.type";
+import { D3PlotBar, D3PlotBarProps } from "./d3-plot-bar";
+import { D3PlotBarh, D3PlotBarhProps } from "./d3-plot-barh";
+import { D3PlotBase } from "./d3-plot-base";
+import { D3PlotLine, D3PlotLineProps } from "./d3-plot-line";
 
 type KeysMatching<T, V> = { [K in keyof T]-?: T[K] extends V ? K : never }[keyof T];
 
@@ -161,9 +160,9 @@ export class DataFrame<T> extends Plottable<T> {
     }
 
     groupBy(acc: Acc<T>): DataFrameGroups<T> {
-        const groupIds: string[] = [];
+        const groupIds: (string | number)[] = [];
         const groups: {
-            [groupId: string]: DataFrame<T>
+            [groupId: (string | number)]: DataFrame<T>
         } = {};
 
         this.rows.forEach((r, i) => {
@@ -176,6 +175,7 @@ export class DataFrame<T> extends Plottable<T> {
         for (const gId of groupIds) {
             groups[gId] = this.filter((r: T, i) => applyAcc(acc, r, i) === gId);
         }
+
         return new DataFrameGroups(groups);
     }
 
@@ -193,6 +193,12 @@ export class DataFrame<T> extends Plottable<T> {
 
     avgField(acc: Acc<T>) {
         return this.sumField(acc) / this.rows.length;
+    }
+
+    std(acc: Acc<T>): number {
+        const mean = this.avgField(acc)
+
+        return Math.sqrt(this.sumField((r, i) => Math.pow(applyAcc(acc, r, i) - mean, 2)) / this.rows.length)
     }
 
     col(colName: keyof T) {

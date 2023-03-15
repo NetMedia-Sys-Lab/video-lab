@@ -29,7 +29,7 @@ class JobBase:
     job_id: str = None
     status: str = None
     error: str = None
-    output: Union[str, int, float, bool, Dict, List] = None
+    output: str = None
     finished_at: float = None
     scheduled_at: float = None
     run_at: float = None
@@ -62,8 +62,9 @@ class JobBase:
 
     def try_read(self, file_path):
         try:
-            with open(file_path) as f:
-                return f.read()
+            print(f"Trying to read : {file_path}")
+            with open(file_path, 'rb') as f:
+                return f.read().decode('ascii')
         except Exception as e:
             return f"Failed to read {file_path}: {e}"
 

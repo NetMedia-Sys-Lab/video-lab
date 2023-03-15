@@ -8,7 +8,7 @@ export declare type D3PlotBarhProps<T> = D3PlotBaseProps<T> & {
     xAcc?: Acc<T>
     yAcc: Acc<T>
     spanAcc?: Acc<T>
-    colors?: Acc<T>[]
+    colors?: Acc<T, string>[]
     opacity?: Acc<T>
     text?: Acc<T>
     gridY?: boolean
@@ -25,7 +25,6 @@ export class D3PlotBarh<T> extends D3PlotBase<T> {
     xAcc: Acc<T>
     yAcc: Acc<T>
     spanAcc: Acc<T>
-    colors: Acc<T>[]
     style: Acc<T, RectStyle>
     class: Acc<T, string>
 
@@ -39,7 +38,6 @@ export class D3PlotBarh<T> extends D3PlotBase<T> {
         this.xAcc = props.spanAcc ? (props.xAcc || this.dfGroups.getIndexAcc()) : 0;
         this.yAcc = props.yAcc;
         this.spanAcc = props.spanAcc || props.xAcc || this.dfGroups.getIndexAcc();
-        this.colors = props.colors || COLORS;
         this.opacity = props.opacity;
         this.text = props.text;
         this.gridY = props.gridY;
