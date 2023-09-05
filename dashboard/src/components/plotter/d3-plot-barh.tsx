@@ -91,8 +91,7 @@ export class D3PlotBarh<T> extends D3PlotBase<T> {
                 const plotDfText = df.applyAccessors<D3TextParams>({
                     x: sumAcc(this.xAcc, this.spanAcc),
                     y: sumAcc(this.yAcc, barHeight * dfIndex),
-                    text: this.text,
-                    opacity: 1
+                    text: this.text
                 });
                 this.drawText(plot, yScale, plotDfText);
             }

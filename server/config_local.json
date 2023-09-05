@@ -2,16 +2,16 @@
     "headlessPlayer": {
         "resultsDir": "/home/akram/ucalgary/research/runs",
         "resultDirPrefix": "",
-        "dockerCompose": "/home/akram/ucalgary/research/beta-emulator-quic/docker-compose.yml",
+        "dockerCompose": "/home/akram/ucalgary/research/istream-tasq-player/docker-compose.yml",
         "profilesDir": "/home/akram/ucalgary/research/beta/scripts/expr/bandwidth",
-        "envsDir": "/home/akram/ucalgary/research/beta-emulator-quic/dash_emulator_quic/resources"
+        "envsDir": "/home/akram/ucalgary/research/istream-player/resources"
     },
     "jobManager": {
         "jobsDir": "/home/akram/ucalgary/research/ramdisk/jobs",
         "jobManagerServerUrl": "http://localhost:3001"
     },
     "dataset": {
-        "datasetDir": "/home/akram/ucalgary/research/beta-emulator-quic/dataset"
+        "datasetDir": "/home/akram/ucalgary/research/istream-player/dataset"
     },
     "vmafDir": "/home/akram/ucalgary/research/video-lab/server/third_party/vmaf",
     "cacheDir": "/home/akram/ucalgary/research/tmp",

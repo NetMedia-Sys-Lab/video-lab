@@ -1,18 +1,25 @@
-import {RunConfig} from "./result.type"
+import { RunConfig } from "./result.type"
 
 export type RunSegmentType = {
+    adap_set_id: number
+    adaptation_throughput: number
     bitrate: number
-    end: number
     first_byte_at: number
     index: number
     last_byte_at: number
     quality: number
-    ratio: number
-    start: number
-    stop_ratio: number
-    throughput: number
+    received_bytes: number
+    repr_id: number
+    segment_throughput: number
+    start_time: number
+    stop_time: number
+    stopped_bytes: number
+    total_bytes: number
     url: string
+    init_url: string
+    duration: number
 }
+
 export type RunStateType = {
     position: number
     state: string
@@ -37,8 +44,13 @@ export type RunMicroStallsType = {
         play_duration: number,
         stall_duration: number
     }[],
-    total_play_duration : number
-    total_stall_duration : number
+    total_play_duration: number
+    total_stall_duration: number
+    long_stall_duration: number
+}
+export type RunStallType = {
+    time_start: number
+    time_end: number
 }
 
 export type RunDataType = {
@@ -48,6 +60,8 @@ export type RunDataType = {
     num_quality_switches: number
     dur_stall: number
     states: [RunStateType]
+    buffer_level: [{ level: number, time: number }]
+    playback_start_time: number
     tc_stats: [{
         time: number
         qdiscs: {
@@ -59,6 +73,7 @@ export type RunDataType = {
             }
         }
     }]
+    stalls: [RunStallType]
     segments: RunSegmentType[]
     bandwidth_actual: [RunBwActualType]
     bandwidth_estimate: [RunBwEstimatedType]

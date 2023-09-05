@@ -1,6 +1,6 @@
 import "./style.scss"
 
-import { Button, Select, Space } from "antd"
+import { Button, Checkbox, Select, Space } from "antd"
 import { useEffect, useMemo, useState } from "react"
 import {
     COLORS
@@ -9,6 +9,7 @@ import { RunDataType } from "../../types/run-data.type"
 import { D3PlotBase } from "../plotter/d3-plot-base"
 import { D3PlotComponent } from "../plotter/d3-plot.component"
 import { DataFrame } from "../plotter/dataframe"
+import ReactJson from "react-json-view"
 
 function commonPrefixIndex(strs: string[]) {
     const tokens = strs.map(s => s.split("_"))
@@ -36,32 +37,27 @@ function commonSuffixIndex(strs: string[]) {
     return minLength;
 }
 
+type GroupOptions = "method" | "resultId" | "bufferSelection" | "networkSelection" | "segDuration" | "crf";
 
-type PlotFields = {
-    name?: string
-    video?: string
-    bufferSetting?: string
-    codec?: string
-    segLength?: number
-    method: string
-    numBuffStall?: number
-    durBuffStall?: number
-    vmaf?: number
-    durMicroStall?: number
-    durStall?: number
-    quality?: number
-}
+type XAxisOptions = "resultId" | "video" | "bufferSelection" | "segLength" | "K_MAXIMUM_WINDOW" | "crf" | "networkSelection" | "segDuration";
 
+type YAxisOptions = "name" | "video" | "bufferSelection" | "segLength" | "method" | "numBuffStall"
+    | "durBuffStall" | "durLongStall" | "vmaf" | "durMicroStall" | "durStall" | "quality";
+
+type DataRow = Record<GroupOptions | XAxisOptions | YAxisOptions, string | number>;
 
 export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] }) => {
-    const [plotType, setPlotType] = useState('durStall (ms)')
+    const [plotType, setPlotType] = useState<"line" | "bar">("line");
+    const [xAxis, setXAxis] = useState<XAxisOptions>("video");
+    const [group, setGroup] = useState<GroupOptions>('method');
+    const [yAxis, setYAxis] = useState<YAxisOptions>('durStall')
     const [plots, setPlots] = useState<D3PlotBase<any>[]>([])
-    const [xAxis, setGroupBy] = useState<string | null>("video");
+    const [selectedData, setSelectedData] = useState({});
+    const [xAxisClipLabel, setXAxisClipLabel] = useState<boolean>(false);
 
-    const df: DataFrame<PlotFields> | undefined = useMemo(() => {
+    const df: DataFrame<DataRow> | undefined = useMemo(() => {
         if (runsData.length === 0) return
         let plotData: RunDataType[] = runsData
-        console.log("Creating plots from data", plotData)
 
         // Create constant color map for each run
         const runColors: { [runKey: string]: string } = {}
@@ -72,41 +68,46 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         const names = plotData.map(r => r.run_config.runId.split("/").join("_"))
         const cpi = commonPrefixIndex(names)
         const csi = commonSuffixIndex(names)
-        // const cpi = 0
-        // const csi = plotData[0].run_config.runId.split("/").join("_").split("_").length
         return new DataFrame<RunDataType>(plotData).mapRows(r => {
-            let method = "dash"
-            if (r.run_config.beta) {
-                if (r.run_config.protocol === "tcp") {
-                    method = "beta"
-                } else {
-                    method = "tasq"
-                }
-            } else if (r.run_config.protocol !== "tcp") {
-                throw Error("Found run over non beta and quic")
-            }
+            let beta = r.run_config.mod_beta === "beta" ? "BETA" : "DASH";
+            let method = beta + "_" + r.run_config.mod_downloader;
+            const totalDuration = r.segments.map(seg => seg.duration).reduce((prevSum, d) => prevSum + d, 0);
+            const name = r.run_config.runId.replace("/", "_").split("_").slice(cpi, csi).join("_");
+            const video = r.run_config.input.startsWith("https://server:443/") ? r.run_config.input.slice(19) : r.run_config.input;
+            let crfMatches = /crf(\d+)/g.exec(r.run_config.runId);
+            let segDurMatches = /\/[a-z]+(\d+)s/g.exec(r.run_config.input);
+            let videoNameMatches = /\/([a-z]+)\d+s/g.exec(r.run_config.input);
+            let segmentTypeMatches = /\/[a-z]+\d+s_\d+s_((?:i|s)+)_/g.exec(r.run_config.input);
             return {
-                name: r.run_config.runId.replace("/", "_").split("_").slice(cpi, csi).join("_"),
+                name,
                 resultId: r.run_config.resultId,
-                video: r.run_config.video,
-                bufferSetting: r.run_config.bufferSetting,
-                codec: r.run_config.codec,
-                segLength: r.run_config.length,
+                video,
+                bufferSelection: r.run_config._selections?.buffer || r.run_config.buffer_duration.toString(),
+                segLength: r.segments[0].duration || 1,
                 method,
                 numBuffStall: r.num_stall,
                 durBuffStall: r.dur_stall * 1000,
                 vmaf: r.vmaf.mean,
                 vmafLoss: (100 - r.vmaf.mean),
                 durMicroStall: r.micro_stalls.total_stall_duration * 1000,
+                durUnnoticeable: (r.micro_stalls.total_stall_duration - r.micro_stalls.long_stall_duration) * 1000,
                 numSwitches: r.num_quality_switches,
                 durStall: r.dur_stall * 1000 + r.micro_stalls.total_stall_duration * 1000,
-                durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration) * 100 / (r.segments.length * r.run_config.length),
-                quality: new DataFrame(r.segments).avgField(r => 6-r.quality),
+                durLongStall: r.dur_stall * 1000 + r.micro_stalls.long_stall_duration * 1000,
+                durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration) * 100 / totalDuration,
+                quality: new DataFrame(r.segments).avgField(r => 6 - r.quality),
                 quality_std: new DataFrame(r.segments).std(r => r.quality),
                 bitrate: new DataFrame(r.segments).avgField(r => r.bitrate),
                 bitrate_std: new DataFrame(r.segments).std(r => r.bitrate),
-                K_MAXIMUM_WINDOW: parseInt(r.run_config.K_MAXIMUM_WINDOW)
-            } as PlotFields
+                K_MAXIMUM_WINDOW: parseInt(r.run_config.K_MAXIMUM_WINDOW),
+                networkSelection: r.run_config._selections.network,
+
+                // Optional Fields
+                crf: crfMatches ? crfMatches[1] : undefined,
+                videoName: videoNameMatches ? videoNameMatches[1] : undefined,
+                segDuration: segDurMatches ? segDurMatches[1] : undefined,
+                segmentType: segmentTypeMatches ? segmentTypeMatches[1] : undefined,
+            } as DataRow
         }, "name")
     }, [runsData])
 
@@ -115,58 +116,78 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
 
         const plots: D3PlotBase<any>[] = []
 
-        if (xAxis === null) {
-            df.col(plotType.split(" ")[0] as any).plotBar(plots, { yLabel: plotType });
-        } else {
-            const indexField = xAxis.split(" ")[0] as keyof PlotFields
-            const plotField = plotType.split(" ")[0]
-            if (plotField === "durStall") {
-                const dfGroup = df.groupBy(r => r.method).mapGroups(
-                    (method, df1) => {
-                        return df1.groupBy(r => r[indexField]!)
-                            .reduce((groupByValue, df2) => ({
-                                method: method,
-                                [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-                                "durStall": df2.avgField(r => r.durStall! / 1000),
-                                "durBuffStall": df2.avgField(r => r.durBuffStall! / 1000),
-                            }), indexField)
-                    }
-                )
-                console.log(dfGroup)
-                dfGroup.col("durStall").plotBar(plots, {
-                    xLabel: xAxis, yLabel: "Stall in sec", opacity: 0.3,
-                    legendLabels: { 'tasq': 'TASQ Stutter', 'beta': 'BETA Stutter', 'dash': 'DASH Stutter' }
-                })
-                dfGroup.col("durBuffStall").plotBar(plots, { legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } })
-            } else {
-                const dfGroup = df.groupBy(r => r.method).mapGroups(
-                    (method, df1) => {
-                        const ret = df1.groupBy(r => r[indexField]!)
-                            .reduce((groupByValue, df2) => ({
-                                method: method,
-                                [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-                                [plotField]: df2.avgField(r => r[plotField as keyof PlotFields]!),
-                                "durBuffStall": df2.avgField(r => r.durBuffStall!),
-                            }), indexField)
-                        return ret
-                    }
-                )
-                dfGroup.col(plotField as any).plotBar(plots, { xLabel: xAxis, yLabel: plotType, legendLabels: { 'tasq': 'TASQ', 'beta': 'BETA', 'dash': 'DASH' } })
+        // if (xAxis === null) {
+        //     df.col(yAxis as any).plotBar(plots, { yLabel: yAxis });
+        // } else {
+        // if (yAxis === "durStall") {
+        // const dfGroup = df.groupBy(r => r.method).mapGroups(
+        //     (method, df1) => {
+        //         return df1.groupBy(r => r[indexField]!)
+        //             .reduce((groupByValue, df2) => ({
+        //                 method: method,
+        //                 [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+        //                 "durStall": df2.avgField(r => r.durStall! / 1000),
+        //                 "durLongStall": df2.avgField(r => r.durLongStall! / 1000),
+        //                 "durBuffStall": df2.avgField(r => r.durBuffStall! / 1000),
+        //             }), indexField)
+        //     }
+        // )
+        // dfGroup.col("durStall").plotBar(plots, {
+        //     xLabel: xAxis, yLabel: "Stall in sec", opacity: 0.3,
+        //     legendLabels: { 'tasq': 'TASQ Stutter', 'beta': 'BETA Stutter', 'dash': 'DASH Stutter' },
+        //     onSelect: (idx, data) => setSelectedData(data)
+        // })
+        // dfGroup.col("durLongStall").plotBar(plots, {
+        //     opacity: 0.5,
+        //     onSelect: (idx, data) => setSelectedData(data)
+        //     // legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } 
+        // })
+        // dfGroup.col("durBuffStall").plotBar(plots, {
+        //     onSelect: (idx, data) => setSelectedData(data)
+        //     // legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } 
+        // })
+        // } else {
+        const dfGroup = df.groupBy(r => r[group]).mapGroups(
+            (groupId, df1) => {
+                const ret = df1.groupBy(r => r[xAxis]!)
+                    .reduce((groupByValue, df2) => ({
+                        [group]: groupId,
+                        [xAxis]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+                        [yAxis]: df2.avgField(r => r[yAxis]!),
+                        "durBuffStall": df2.avgField(r => r.durBuffStall!),
+                    }), xAxis);
+                ret.sortNumerical(xAxis);
+                return ret
             }
+        )
+        if (plotType === "bar") {
+
+            dfGroup.col(yAxis).plotBar(plots, {
+                xLabel: xAxis,
+                yLabel: yAxis,
+                onSelect: (idx, data) => setSelectedData(data)
+            })
+        } else if (plotType === "line") {
+            dfGroup.col(yAxis).plotLine(plots, {
+                xLabel: xAxis,
+                yLabel: yAxis,
+                text: '+'
+            })
         }
+        // }
+        // }
 
         setPlots(plots)
-    }, [plotType, xAxis, df])
+    }, [yAxis, xAxis, df, plotType, group])
 
     function downloadJson() {
-        const indexField = xAxis!.split(" ")[0] as keyof PlotFields
-        const columns = ["durBuffStall", "durMicroStall", "durStall", "durStallPerc", "numBuffStall", "numSwitches", "vmaf", "vmafLoss", "quality", "quality_std", "bitrate", "bitrate_std"]
-        const result = df!.groupBy(r => r[indexField]!)
+        const columns = ["durBuffStall", "durMicroStall", "durStall", "durStallPerc", "numBuffStall", "numSwitches", "vmaf", "vmafLoss", "quality", "quality_std", "bitrate", "bitrate_std"];
+        const result = df!.groupBy(r => r[xAxis]!)
             .reduce((groupByValue, df2) => columns.reduce((o, key) => Object.assign(o, {
-                [key]: df2.avgField(r => r[key as keyof PlotFields]!),
+                [key]: df2.avgField(r => r[key as keyof DataRow]!),
             }), {
-                [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-            }), indexField).rows
+                [xAxis]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+            }), xAxis).rows
 
         const fileName = "data.json";
         const json = JSON.stringify(result, null, 2);
@@ -186,32 +207,61 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
     }
 
     return <>
-        X Axis &nbsp;&nbsp;&nbsp;
-        <Select style={{ width: "200px" }} placeholder="X Axis" defaultValue={xAxis} onChange={e => setGroupBy(e)}>
-            <Select.Option value={null}>None</Select.Option>
+        Plot Type &nbsp;&nbsp;&nbsp;
+        <Select placeholder="Plot Type" value={plotType} onChange={setPlotType}>
+            <Select.Option value={"line"}>Line</Select.Option>
+            <Select.Option value={"bar"}>Bar</Select.Option>
+        </Select>
+        &nbsp;&nbsp; Group By &nbsp;&nbsp;&nbsp;
+        <Select placeholder="Group By" value={group} onChange={setGroup}>
+            <Select.Option value={"method"}>Method</Select.Option>
+            <Select.Option value={"resultId"}>Result ID</Select.Option>
+            <Select.Option value={"bufferSelection"}>Buffer Selection</Select.Option>
+            <Select.Option value={"segDuration"}>Segment Duration</Select.Option>
+            <Select.Option value={"networkSelection"}>Network Selection</Select.Option>
+            <Select.Option value={"crf"}>CRF</Select.Option>
+            <Select.Option value={"videoName"}>Video Name</Select.Option>
+            <Select.Option value={"segmentType"}>Segment Type</Select.Option>
+        </Select>
+        &nbsp;&nbsp; X Axis &nbsp;&nbsp;&nbsp;
+        <Select style={{ width: 200 }} placeholder="X Axis" value={xAxis} onChange={setXAxis}>
+            {/* <Select.Option value={null}>None</Select.Option> */}
             <Select.Option value={"resultId"}>Result ID</Select.Option>
             <Select.Option value={"video"}>Video</Select.Option>
-            <Select.Option value={"bufferSetting"}>Buffer Setting</Select.Option>
-            <Select.Option value={"codec"}>Codec</Select.Option>
-            <Select.Option value={"segLength (s)"}>Segment Length</Select.Option>
-            <Select.Option value={"K_MAXIMUM_WINDOW (bytes)"}>K_MAXIMUM_WINDOW</Select.Option>
-        </Select> <br />
-        Y Axis &nbsp;&nbsp;&nbsp;
+            <Select.Option value={"bufferSelection"}>Buffer Selection</Select.Option>
+            <Select.Option value={"networkSelection"}>Network Selection</Select.Option>
+            <Select.Option value={"segLength"}>Segment Length (s)</Select.Option>
+            <Select.Option value={"K_MAXIMUM_WINDOW"}>K_MAXIMUM_WINDOW (bytes)</Select.Option>
+            <Select.Option value={"crf"}>CRF</Select.Option>
+            <Select.Option value={"segDuration"}>Segment Duration</Select.Option>
+            <Select.Option value={"videoName"}>Video Name</Select.Option>
+            <Select.Option value={"segmentType"}>Segment Type</Select.Option>
+        </Select>
+        &nbsp;&nbsp;Y Axis &nbsp;&nbsp;&nbsp;
         <Space>
-            <Select style={{ width: "200px" }} placeholder="Y Axis" onChange={(e) => setPlotType(e)} value={plotType}>
-                <Select.Option value="durBuffStall (ms)">Duration of Buffering Stalls (ms)</Select.Option>
-                <Select.Option value="durMicroStall (ms)">Duration of Micro Stalls (ms)</Select.Option>
-                <Select.Option value="durStall (ms)">Duration of All Stalls (ms)</Select.Option>
-                <Select.Option value="durStallPerc (%)">Duration of All Stalls (%)</Select.Option>
+            <Select style={{ width: 300 }} placeholder="Y Axis" onChange={setYAxis} value={yAxis}>
+                <Select.Option value="durBuffStall">Duration of Buffering Stalls (ms)</Select.Option>
+                <Select.Option value="durMicroStall">Duration of Micro Stalls (ms)</Select.Option>
+                <Select.Option value="durUnnoticeable">Duration of Unnoticeable Micro Stalls (ms)</Select.Option>
+                <Select.Option value="durStall">Duration of All Stalls (ms)</Select.Option>
+                <Select.Option value="durStallPerc">Duration of All Stalls (%)</Select.Option>
                 <Select.Option value="numBuffStall">Number of Buffering Stalls</Select.Option>
                 <Select.Option value="numSwitches">Number of Switches</Select.Option>
-                <Select.Option value="vmaf (%)">VMAF (%)</Select.Option>
-                <Select.Option value="vmafLoss (%)">VMAF Loss (%)</Select.Option>
+                <Select.Option value="vmaf">VMAF (%)</Select.Option>
+                <Select.Option value="vmafLoss">VMAF Loss (%)</Select.Option>
                 <Select.Option value="quality">Quality Level</Select.Option>
                 <Select.Option value="bitrate">Bitrate</Select.Option>
             </Select>
+            <Checkbox onChange={ev => setXAxisClipLabel(ev.target.value)}>Clip Labels</Checkbox>
             <Button onClick={downloadJson}>Download JSON</Button>
         </Space>
-        <D3PlotComponent plots={plots} ></D3PlotComponent>
+        <div className="methods-plot">
+            <D3PlotComponent
+                plots={plots}
+                // margin={{ top: 70, right: 80, bottom: 200, left: 100 }}
+                // height={700}
+            ></D3PlotComponent>
+        </div>
+        <ReactJson src={selectedData}></ReactJson>
     </>
 }

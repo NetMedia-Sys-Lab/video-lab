@@ -29,11 +29,9 @@ export const NewRunFormComponent = (props: {
             extraMap[extraItem.prop] = extraItem.values
         }
         localStorage.setItem('new-run-last-values', JSON.stringify({...values, extra}))
-        console.log(config)
         setIsScheduling(true)
         postNewRunConfig(config)
             .then(res => {
-                console.log(res)
                 message.success(res.message)
                 setIsScheduling(false)
                 // results.refresh().then(res => {
@@ -56,7 +54,6 @@ export const NewRunFormComponent = (props: {
             resultId: defaultValues.resultId.replace(/\d+$/, '')
                 + (parseInt((defaultValues.resultId.match(/\d+$/) || [0])[0], 10) + 1).toString().padStart(3, '0')
         }
-        console.log(values)
         formRef.current?.setFieldsValue(values)
         setExtra(values.extra || [])
     }

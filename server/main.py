@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import logging
 from threading import Thread
 from time import sleep
 
@@ -18,6 +19,8 @@ from src.beta.experiment_runner import ExperimentRunner
 from src.run_watcher import RunsWatcher
 from src.state_manager import StateManager
 from src.video import VideoInspector
+
+logging.getLogger().setLevel(logging.DEBUG)
 
 config_file = open("config.json")
 CONFIG = json.load(config_file)

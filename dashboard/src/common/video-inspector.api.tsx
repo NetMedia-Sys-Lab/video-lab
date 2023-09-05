@@ -4,10 +4,12 @@ import { ApiBase, createUseAPI } from "./api";
 const VideoInspectorApi = `${ApiBase}/video-inspector`
 const euc = encodeURIComponent
 
-export const useVideoDetails = createUseAPI<[videoUrls: string[]], any>(async (videoUrls: string[]) => {
-    const response = await fetch(`${VideoInspectorApi}/video/details?urls=${euc(videoUrls.join(","))}`);
+export const useVideoDetails = createUseAPI<[videoUrls: string, refPaths?: string], any>(async (videoUrls: string, refPaths?: string) => {
+    let url = `${VideoInspectorApi}/video/details?urls=${euc(videoUrls)}&refs=${euc(refPaths || "")}`;
+    const response = await fetch(url);
     const data = await response.json()
     data.frames = data.frames.map((frame: any, i: number) => ({
+        key: i,
         index: i,
         ...frame,
         pkt_pts_time: parseFloat(frame.pkt_pts_time),
@@ -19,3 +21,7 @@ export const useVideoDetails = createUseAPI<[videoUrls: string[]], any>(async (v
     }))
     return data;
 });
+
+export const videoPlaybackPath = (videoUrls: string) => {
+    return `${VideoInspectorApi}/video/playback.mp4?urls=${euc(videoUrls)}`
+}

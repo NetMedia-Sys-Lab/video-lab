@@ -1,0 +1,168 @@
+{
+    "bufferOptions": [
+        {
+            "name": "8s",
+            "value": {
+                "buffer_duration": 8,
+                "safe_buffer_level": 6,
+                "panic_buffer_level": 2.5,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "5s",
+            "value": {
+                "buffer_duration": 5,
+                "safe_buffer_level": 3,
+                "panic_buffer_level": 1,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "25s",
+            "value": {
+                "buffer_duration": 25,
+                "safe_buffer_level": 5,
+                "panic_buffer_level": 3,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        }
+    ],
+    "methodOptions": [
+        {
+            "name": "BETA",
+            "value": {
+                "mod_beta": "beta",
+                "mod_vq": "vq_fixed",
+                "mod_downloader": "tcp"
+            }
+        },
+        {
+            "name": "DASH",
+            "value": {
+                "mod_downloader": "tcp"
+            }
+        },
+        {
+            "name": "TASQ",
+            "value": {
+                "mod_beta": "beta",
+                "mod_vq": "vq_fixed",
+                "mod_downloader": "quic",
+                "K_MAXIMUM_WINDOW": 12000
+            }
+        }
+    ],
+    "protocolOptions": [
+        {
+            "name": "TCP",
+            "value": {
+                "mod_downloader": "tcp"
+            }
+        },
+        {
+            "name": "QUIC",
+            "value": {
+                "mod_downloader": "quic",
+                "K_MAXIMUM_WINDOW": "12000"
+            }
+        }
+    ],
+    "abrOptions": [
+        {
+            "name": "gamma_closed",
+            "value": {
+                "mod_abr": "gamma:closed=true"
+            }
+        }
+    ],
+    "serverOptions": [
+        {
+            "name": "aioquic",
+            "value": {
+                "server_image": "server_aioquic:latest"
+            }
+        }
+    ],
+    "analyzerOptions": [
+        {
+            "name": "All",
+            "value": {
+                "mod_analyzer": [
+                    "data_collector",
+                    "file_saver",
+                    "progress_logger"
+                ],
+                "live_log": "/run/event_logs.txt"
+            }
+        }
+    ],
+    "networkOptions": [
+        {
+            "name": "drop_250",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n"
+            }
+        },
+        {
+            "name": "bw_rel_80",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "0.8*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+            }
+        },
+        {
+            "name": "bw_rel_100",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "1*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+            }
+        },
+        {
+            "name": "bw_rel_60",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "0.6*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+            }
+        },
+        {
+            "name": "bw_rel_90",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "0.9*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+            }
+        },
+        {
+            "name": "bw_rel_70",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "0.7*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_3215",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "3215 35 1.0"
+            }
+        }
+    ]
+}

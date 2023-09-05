@@ -20,7 +20,7 @@ import {
     Tag
 } from "antd";
 
-import { DeleteOutlined, ExperimentOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ExperimentOutlined, ReloadOutlined } from '@ant-design/icons';
 import { calculateRunQuality, createTilesVideo, deleteRuns, encodePlayback, postNewRunConfig, useGetAllResults, useStateSocket } from "../../common/api";
 import { RunConfig, RunOrResult, RunsFilterType } from "../../types/result.type";
 import { ColumnsType } from "antd/lib/table";
@@ -32,6 +32,7 @@ import { makeHeadlessPlayerSinglePath } from "./headless-player-single.component
 import { useDebouncedState, useDimensions } from "../../common/util";
 import { NewRunFormComponent } from "../../components/headless-player/new-run-form.component";
 import { useFilterRuns } from "../../common/run-utils";
+import { NewRunFormV2Component } from "../../components/headless-player/new-run-form-v2.component";
 
 const { Content, Header } = Layout;
 
@@ -48,7 +49,6 @@ export const HeadlessPlayerComponent = () => {
     const tabsContainerRef = useRef<HTMLDivElement>(null);
     const tableHeight = useDimensions(tabsContainerRef).height - 150;
     const [filter, setFilter] = useState<RunsFilterType>({});
-    console.log("render", new Date())
 
     const columns: ColumnsType<RunOrResult> = [
         {
@@ -60,6 +60,18 @@ export const HeadlessPlayerComponent = () => {
                     : makeHeadlessPlayerSinglePath(run.runId)
             }>{run.runId + (run.runs ? ` (${run.runs?.length})` : "")}</Link>,
             defaultSortOrder: "ascend"
+        // }, {
+        //     title: 'Input',
+        //     sorter: (a, b) => a.input?.localeCompare(b.input),
+        //     render: (_, run) => run.runs
+        //         ? <></>
+        //         : <>{run.input.startsWith("https://server:443") ? run.input.substring(18) : run.input}</>
+        // }, {
+        //     title: 'Type',
+        //     // @ts-ignore
+        //     render: (_, run) => run.runs
+        //         ? <></>
+        //         : <>{run.buffer_duration}s, {run.mod_downloader}, {run.mod_beta === "beta" ? "BETA" : "DASH"}</>
         }, {
             title: '',
             width: "100px",
@@ -74,22 +86,23 @@ export const HeadlessPlayerComponent = () => {
                     return p > 0 ? <Progress percent={Math.round(p * 100)} /> : '';
                 }
             }
-        }, {
-            title: 'Actions',
-            render: (_, run) => <>
-                <Button size={"small"} type={"link"} onClick={async e => {
-                    await deleteRuns([run.runId]);
-                    message.success(`Deleted ${run.runId}`);
-                    await results.refresh();
-                }}>Delete</Button>
-                <Button size={"small"} type={"link"} onClick={async e => {
-                    await deleteRuns([run.runId]);
-                    message.success(`Deleted ${run.runId}`);
-                    await submitRun(run);
-                    await results.refresh();
-                }}>Rerun</Button>
-            </>
-        }
+        }, 
+        // {
+        //     title: 'Actions',
+        //     render: (_, run) => <>
+        //         <Button size={"small"} type={"link"} onClick={async e => {
+        //             await deleteRuns([run.runId]);
+        //             message.success(`Deleted ${run.runId}`);
+        //             await results.refresh();
+        //         }}>Delete</Button>
+        //         {/* <Button size={"small"} type={"link"} onClick={async e => {
+        //             await deleteRuns([run.runId]);
+        //             message.success(`Deleted ${run.runId}`);
+        //             await submitRun(run);
+        //             await results.refresh();
+        //         }}>Rerun</Button> */}
+        //     </>
+        // }
     ];
 
     const onRowSelectionChange = (selectedRowKeys: React.Key[], selectedRows: RunOrResult[]) => {
@@ -101,28 +114,29 @@ export const HeadlessPlayerComponent = () => {
             .then(value => results.refresh())
     }
 
-    const submitRun = async (run: RunConfig) => {
-        const config = {
-            "resultId": run.resultId,
-            "videos": [run.video],
-            "bwProfiles": [run.bwProfile],
-            "repeat": 1,
-            "serverLogLevel": "none",
-            beta: [run.beta],
-            protocols: [run.protocol],
-            bufferSettings: [run.bufferSetting],
-            codecs: [run.codec],
-            lengths: [run.length],
-            calculateQuality: run.calculateQuality
-        }
-        await message.info(JSON.stringify(config, null, 4))
+    // const submitRun = async (run: RunConfig) => {
+    //     const config = {
+    //         "resultId": run.resultId,
+    //         "videos": [run.video],
+    //         "bwProfiles": [run.bwProfile],
+    //         "repeat": 1,
+    //         "serverLogLevel": "none",
+    //         beta: [run.beta],
+    //         protocols: [run.protocol],
+    //         bufferSettings: [run.bufferSetting],
+    //         codecs: [run.codec],
+    //         lengths: [run.length],
+    //         calculateQuality: run.calculateQuality
+    //     }
+    //     await message.info(JSON.stringify(config, null, 4))
 
-        // return values;
-    }
+    //     // return values;
+    // }
 
     return <>
         <Content style={{ margin: '0 16px', display: 'flex', flexDirection: 'column' }}>
             <Space>
+                <Button key="7" type="primary" icon={<ReloadOutlined />} onClick={results.refresh} />
                 <Button disabled={selectedRuns.length === 0} key="4" type="primary" danger icon={<DeleteOutlined />} onClick={onDelete}> Delete Selected</Button>
                 <Button disabled={selectedRuns.length === 0} key="2" type="primary" onClick={async () => {
                     const response = await calculateRunQuality(selectedRuns.map(run => run.runId))
@@ -152,7 +166,7 @@ export const HeadlessPlayerComponent = () => {
                     <Tabs.TabPane tab="Runs History" key="runsHistory">
                         <Input.Search placeholder="Search Run" onSearch={(value) => {
                             setFilter({ ...filter, runId: value })
-                        }} style={{ width: 200 }}/>
+                        }} style={{ width: 200 }} />
                         <Table
                             dataSource={useFilterRuns(results.data?.results || [], filter)}
                             columns={columns}
@@ -177,9 +191,18 @@ export const HeadlessPlayerComponent = () => {
                         />
                     </Tabs.TabPane>
                     <Tabs.TabPane tab="New Run" key="newRun">
+
                         <NewRunFormComponent onRunScheduled={(newResultId) => {
                             setExpandedRowKeys(val => [...val, newResultId])
                         }}></NewRunFormComponent>
+
+                    </Tabs.TabPane>
+                    <Tabs.TabPane tab="New Run V2" key="newRunV2">
+
+                        <NewRunFormV2Component onRunScheduled={(newResultId) => {
+                            setExpandedRowKeys(val => [...val, newResultId])
+                        }}></NewRunFormV2Component>
+
                     </Tabs.TabPane>
                 </Tabs>
             </div>

@@ -2,6 +2,7 @@ import asyncio
 import json
 from os import listdir
 from os.path import basename, dirname, join
+from pathlib import Path
 import os
 from threading import Thread
 from flask import Flask, request, jsonify
@@ -41,6 +42,14 @@ class Dataset:
         return tree
 
     def init_routes(self):
+
+
+        @self.app.get("/dataset/allInputs")
+        def _get_all_inputs():
+            paths = []
+            for path in Path(dataset_dir).rglob('*.mpd'):
+                paths.append(str(path.relative_to(dataset_dir)))
+            return jsonify(paths)
 
         @self.app.get("/dataset/tree")
         def _get_tree():

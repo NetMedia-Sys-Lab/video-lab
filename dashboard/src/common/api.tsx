@@ -18,7 +18,6 @@ function readChunks(reader: ReadableStreamDefaultReader) {
     return {
         async* [Symbol.asyncIterator]() {
             let {value: chunk, done: readerDone} = await reader.read();
-            console.log(chunk);
             chunk = chunk ? utf8Decoder.decode(chunk, {stream: true}) : "";
 
             let re = /\r\n|\n|\r/gm;
@@ -93,7 +92,6 @@ export const useGetAllResults = createUseAPI<[], { results: RunConfig[] }>(async
 export const useGetRunsData = createUseAPI<[runIds: string[]],
     { [runKey: string]: RunDataType }>
 (async (runIds: string[]) => {
-    console.log("Fetching Run Data for ", runIds);
     const response = await fetch(`${HeadlessPlayerApi}/runs/data?runs=${euc(runIds.join(','))}`);
     return await response.json();
 })
@@ -113,7 +111,6 @@ export const useStateSocket = function<T>(key: string, defaultState: T) {
     useEffect(() => {
         // eslint-disable-next-line no-restricted-globals
         const socket = io(`http://${location.hostname}:3001`);
-        console.log("Connecting")
 
         socket.on('connect', () => {
             setIsConnected(true);
@@ -130,7 +127,6 @@ export const useStateSocket = function<T>(key: string, defaultState: T) {
             if (data.key === key) {
                 setState(data.value);
             }
-            console.log("Updating state", data);
         });
 
         return () => {
@@ -158,7 +154,6 @@ export const postNewRunConfig = async (config: any, onProgress: ((chunk: any) =>
 }
 
 export const useGetLogs = createUseAPI<[runId: string], { logs: LogLineType[] }>(async (runId: string) => {
-    console.log("Fetching logs")
     const response = await fetch(`${HeadlessPlayerApi}/runs/logs?run=${euc(runId)}`);
     return await response.json();
 });

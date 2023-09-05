@@ -25,7 +25,21 @@ export const TimeAgoComponent = (props: {
     });
 
     if (!time) return <>Never</>;
+
+    const getDiff = () => {
+        let diff = timeTo.diff(moment(time), 'seconds');
+        if (diff < 60) return diff + " seconds";
+
+        diff = timeTo.diff(moment(time), 'minutes');
+        if (diff < 60) return diff + " minutes";
+
+        diff = timeTo.diff(moment(time), 'hours');
+        if (diff < 60) return diff + " hours";
+
+        diff = timeTo.diff(moment(time), 'days');
+        return diff + " days";
+    }
     return <>
-        {timeTo.diff(moment(time), 's')} seconds ago
+        {getDiff()} ago
     </>
 }

@@ -11,6 +11,7 @@ import {
     RunBwEstimatedType,
     RunDataType,
     RunSegmentType,
+    RunStallType,
     RunStateType
 } from "../../types/run-data.type";
 import { D3PlotBase } from "../plotter/d3-plot-base";
@@ -28,17 +29,20 @@ export const RunTimelinePlotComponent = (props: {
     const { runsData, onMarkerUpdate } = props;
     const [plotRuns, setPlotRuns] = useState<{ [key: string]: boolean }>({});
     const [plotData, setPlotData] = useState<RunDataType[]>([]);
-    const [selectedSegment, setSelectedSegment] = useState<null | { plotIndex: number, segmentIndex: number }>(null);
+    const [selectedSegment, setSelectedSegment] = useState<null | { plotIndex: number, segment: RunSegmentType }>(null);
     const [plotError, setPlotError] = useState<string>()
     const [allPlotRunsSelected, setAllPlotRunsSelected] = useState<boolean>()
 
     const [plotConfig, setPlotConfig] = useState({
         plotDownloads: true,
+        plotTotalSegmentSize: false,
         plotQualityLevels: false,
         plotPosition: true,
-
+        plotBufferLevel: true,
+        plotStalls: true,
         plotDropped: false,
         plotBacklog: false,
+        plotActualBw: true,
         plotEstimatedBw: false,
         backlogQdisc: "1:",
         droppedQdisc: ""
@@ -71,8 +75,8 @@ export const RunTimelinePlotComponent = (props: {
         setPlotError(undefined)
 
         // Create constant color map for each run
-        const runColors: { [runKey: string]: string } = {};
-        const legendLabels: {[k: string]: string} = {}
+        const runColors: { [runKey: string]: string } = {}
+        const legendLabels: { [k: string]: string } = {}
         runsData.forEach((runData, index) => {
             runColors[runData.runId] = COLORS[index % COLORS.length];
             legendLabels[index] = runData.runId
@@ -81,112 +85,155 @@ export const RunTimelinePlotComponent = (props: {
         const plots: D3PlotBase<any>[] = [];
         const colors = plotData.map(d => runColors[d.runId]);
         const segments = new DataFrameGroups<RunSegmentType>(
-            objectMap(plotData, (d) => d.segments),
-            "start", {
-                colors,
-                // legendLabels
-            });
-            // .filter(seg => seg.index < 20);
-        const states = new DataFrameGroups<RunStateType & { segmentLength: number }>(
-            objectMap(plotData, (d) => d.states),
-            "time", { colors }
-            // .filter(state => state.time < 20)
-        )
-        .mapGroups((gid, df) => df.extend({
-            segmentLength: () => {
-                return (plotData[gid as any].run_config.length || 1) as number
-            }
-        }));
-        const bandwidth_actual = new DataFrameGroups<RunBwActualType>(
-            objectMap(plotData, (d) => d.bandwidth_actual.map((bw: RunBwActualType) => ({
-                ...bw,
-                bw: bw.bw < 500 ? 0 : bw.bw
-            }))),
-            "time"
-        );
-        const bandwidth_estimate = new DataFrameGroups<RunBwEstimatedType>(
-            objectMap(plotData, (d) => d.bandwidth_estimate),
-            "time", { colors }
-        );
+            objectMap(plotData, (d: RunDataType) => {
+                const segs = d.segments;
+                if (segs[0].start_time < 100000) return segs;
+                const zero_time = d.playback_start_time;
+                segs.forEach(seg => {
+                    seg.start_time -= zero_time;
+                    seg.stop_time -= zero_time;
+                    seg.first_byte_at -= zero_time;
+                    seg.last_byte_at -= zero_time;
+                })
+                return segs;
+            }),
+            "start_time", {
+            colors,
+        });
+
 
         if (plotConfig.plotDownloads) {
-            console.log("Stored Plot params", segments.plotParams)
+
+            // Waiting time 
             segments.plotBarh(plots, {
-                xAcc: (r) => r.start,
-                spanAcc: (r) => r.first_byte_at - r.start,
+                xAcc: (r) => r.start_time,
+                spanAcc: (r) => r.first_byte_at - r.start_time,
                 yAcc: (r) => r.index,
                 opacity: 0.5
             });
+
+            // Downloading
             segments.plotBarh(plots, {
                 xAcc: r => r.first_byte_at,
-                spanAcc: r => r.end - r.first_byte_at,
+                spanAcc: r => r.stop_time - r.first_byte_at,
                 yAcc: r => r.index,
                 gridY: true,
                 xLabel: "Time (s)",
                 yLabel: "Segment index"
             });
-            segments.filter(r => r.stop_ratio < 0.99)
+
+            // Flushed
+            segments.filter(r => r.stopped_bytes / r.total_bytes < 0.99)
                 .plotBarh(plots, {
                     xAcc: r => r.first_byte_at,
-                    spanAcc: r => r.end - r.first_byte_at,
+                    spanAcc: r => r.stop_time - r.first_byte_at,
                     yAcc: r => r.index,
                     colors: plotData.map(d => "rgba(0,0,0,0.45)")
                 })
             segments.plotBarh(plots, {
-                xAcc: r => r.end,
-                spanAcc: (r) => r.last_byte_at - r.end,
+                xAcc: r => r.stop_time,
+                spanAcc: (r) => r.last_byte_at - r.stop_time,
                 yAcc: r => r.index,
                 colors: plotData.map(d => "#00000026"),
-                text: r => (r.stop_ratio < 0.99
-                    ? r.stop_ratio.toFixed(2)
-                    + (r.ratio !== r.stop_ratio ? ',' + r.ratio.toFixed(2) : '')
+                text: r => (r.stopped_bytes / r.total_bytes < 0.99
+                    ? (r.stopped_bytes / r.total_bytes).toFixed(2)
+                    + (r.received_bytes / r.total_bytes !== r.stopped_bytes / r.total_bytes ? ',' + (r.received_bytes / r.total_bytes).toFixed(2) : '')
                     : '')
             });
             segments.plotBarh(plots, {
-                xAcc: (r) => r.start,
-                spanAcc: (r) => r.last_byte_at - r.start,
+                xAcc: (r) => r.start_time,
+                spanAcc: (r) => r.last_byte_at - r.start_time,
                 yAcc: (r) => r.index,
                 opacity: 0,
                 onSelect: (plotIndex: number, segment: RunSegmentType) => {
-                    setSelectedSegment({ plotIndex, segmentIndex: segment.index })
+                    setSelectedSegment({ plotIndex, segment })
                 }
             })
         }
+        if (plotConfig.plotBufferLevel) {
+            const bufferLevel = new DataFrameGroups<{ time: number, level: number }>(
+                objectMap(plotData, (d) => d.buffer_level),
+                "time", { colors }
+            );
+            bufferLevel.plotLine(plots, {
+                yAcc: r => r.level,
+                colors
+            });
+        }
+
         if (plotConfig.plotPosition) {
-            // console.log(states)
+            const states = new DataFrameGroups<RunStateType & { segmentLength: number }>(
+                objectMap(plotData, (d) => d.states),
+                "time", { colors }
+            )
+                .mapGroups((gid, df) => df.extend({
+                    segmentLength: () => {
+                        return (plotData[gid as any].segments[0].duration || 1) as number
+                    }
+                }));
             states.plotLine(plots, {
                 yAcc: r => r.position / r.segmentLength,
                 colors
             });
         }
+
+        if (plotConfig.plotStalls) {
+            const df = new DataFrameGroups<RunStallType>(objectMap(plotData, (d) => d.stalls), "time_start");
+            const height = segments.max("index") + 1;
+            df.plotRect(plots, {
+                xAcc: r => r.time_start,
+                yAcc: height,
+                widthAcc: r => r.time_end - r.time_start,
+                heightAcc: height,
+                opacity: 0.1,
+                axisIndex: 0
+            })
+        }
+
         if (plotConfig.plotQualityLevels) {
             segments.plotBar(plots, {
                 yAcc: r => (7 - r.quality),
-                xAcc: r => r.start,
+                xAcc: r => r.start_time,
                 axisIndex: 0,
                 opacity: 0.5
             });
         }
-        console.log(bandwidth_actual)
-        // const plot = bandwidth_actual
-        //     .col("bw")
-        //     .toStep("time")
-        //     .mapGroups((gid, df) => df.pushRow({
-        //         time: segments.max("last_byte_at"),
-        //         bw: df.rows.length > 0 ? df.rows[df.rows.length - 1].bw : 0
-        //     } as RunBwActualType))
-        //     .col("bw")
-        //     .plotLine(plots, { axisIndex: -1 });
+        if (plotConfig.plotTotalSegmentSize) {
+            segments.plotBar(plots, {
+                yAcc: r => r.total_bytes,
+                xAcc: r => r.start_time,
+                axisIndex: 2
+            });
+        }
+
+        if (plotConfig.plotActualBw) {
+            const bandwidth_actual = new DataFrameGroups<RunBwActualType>(
+                objectMap(plotData, (d) => d.bandwidth_actual.map((bw: RunBwActualType) => ({
+                    ...bw,
+                    bw: bw.bw < 500 ? 0 : bw.bw
+                }))),
+                "time"
+            );
+            bandwidth_actual
+                .col("bw")
+                .toStep("time")
+                .mapGroups((gid, df) => df.pushRow({
+                    time: segments.max("last_byte_at"),
+                    bw: df.rows.length > 0 ? df.rows[df.rows.length - 1].bw : 0
+                } as RunBwActualType))
+                .col("bw")
+                .plotLine(plots, { axisIndex: -1 });
+        }
 
         if (plotConfig.plotEstimatedBw) {
+            const bandwidth_estimate = new DataFrameGroups<RunBwEstimatedType>(
+                objectMap(plotData, (d) => d.bandwidth_estimate),
+                "time", { colors }
+            );
             bandwidth_estimate.col("bandwidth")
                 .toStep("time")
-                // .filter((r, i) => r.bandwidth < 5000000)
                 .plotLine(plots, { axisIndex: 1 });
-            segments.col("throughput").plotLine(plots, { axisIndex: 1, lineStyle: "none", text: 'o' });
             bandwidth_estimate.col("bandwidth")
-                // .mapGroups((gid, df) => df.toStep("time"))
-                // .filter((r, i) => r.bandwidth < 5000000)
                 .plotLine(plots, { axisIndex: 1, lineStyle: "none", text: '+' });
         }
         if (plotConfig.plotBacklog && plotConfig.backlogQdisc) {
@@ -212,7 +259,6 @@ export const RunTimelinePlotComponent = (props: {
                 }))),
                 "time", { colors }
             );
-            console.log("Plotting dropped", tc_stats)
             tc_stats
                 .col("dropped").dropNa().col("dropped")
                 .plotLine(plots, { axisIndex: 1 });
@@ -298,10 +344,13 @@ export const RunTimelinePlotComponent = (props: {
                 ])}
                 {SettingSection("Segments", [
                     SettingSwitch("Plot Segment Download Timeline", 'plotDownloads'),
-                    SettingSwitch("Plot Segment Quality Levels", 'plotQualityLevels')
+                    SettingSwitch("Plot Segment Quality Levels", 'plotQualityLevels'),
+                    SettingSwitch("Plot Total Segment Size", 'plotTotalSegmentSize')
                 ])}
                 {SettingSection("Playback", [
-                    SettingSwitch("Plot Playback Position", 'plotPosition')
+                    SettingSwitch("Plot Position", 'plotPosition'),
+                    SettingSwitch("Plot Buffer Level", 'plotBufferLevel'),
+                    SettingSwitch("Plot Buffering Stalls", 'plotStalls'),
                 ])}
                 {SettingSection("Network", [
                     SettingSwitch("Plot Packets Dropped", 'plotDropped', [
@@ -310,32 +359,33 @@ export const RunTimelinePlotComponent = (props: {
                     SettingSwitch("Plot Backlog", 'plotBacklog', [
                         SettingSelect("Select QDisc", 'backlogQdisc', qdiscs)
                     ]),
+                    SettingSwitch("Plot Actual Bandwidth", 'plotActualBw'),
                     SettingSwitch("Plot Estimated Bandwidth", 'plotEstimatedBw')
                 ])}
             </Collapse>
         </Drawer>
 
-        <Card  className={`plotter-plot`}>
+        <Card className={`plotter-plot`}>
             {
                 plotError && <Alert type="error" message={plotError} banner />
             }
-            <D3PlotComponent plots={plots} 
-            margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
-            onMarkerUpdate={onMarkerUpdate} onLogsClick={(range) => {
-                window.open(makeKibanaLink({
-                    runIds: plotData.map(runData => runData.runId),
-                    time_from: range.start,
-                    time_to: range.end
-                }), '_blank')!.focus();
-            }} extraControls={
-                <Button type="primary" onClick={e => setDrawerVisible(true)} icon={<SettingOutlined />}>
-                    Settings
-                </Button>
-            } />
+            <D3PlotComponent plots={plots}
+                margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+                onMarkerUpdate={onMarkerUpdate} onLogsClick={(range) => {
+                    window.open(makeKibanaLink({
+                        runIds: plotData.map(runData => runData.runId),
+                        time_from: range.start,
+                        time_to: range.end
+                    }), '_blank')!.focus();
+                }} extraControls={
+                    <Button type="primary" onClick={e => setDrawerVisible(true)} icon={<SettingOutlined />}>
+                        Settings
+                    </Button>
+                } />
         </Card>
 
         <Drawer
-            title={`Segment : ${(selectedSegment?.segmentIndex || 0) + 1}`}
+            title={`Segment : ${(selectedSegment?.segment.index || 0) + 1}`}
             visible={selectedSegment != null}
             onClose={() => setSelectedSegment(null)}
             size="large"
@@ -344,19 +394,17 @@ export const RunTimelinePlotComponent = (props: {
                 useMemo(() => {
                     if (!selectedSegment) return "Please Select a segment";
                     const makeVideoPath = (name: string) => `${StaticApi}/${plotData[selectedSegment.plotIndex].runId}/downloaded/${name}`;
-                    const segment = plotData[selectedSegment.plotIndex].segments[selectedSegment.segmentIndex]
-                    const quality = segment.quality;
-                    const index = selectedSegment.segmentIndex;
+                    const index = selectedSegment.segment.index;
                     const videoUrls = [
-                        makeVideoPath(`init-stream${quality}.m4s`),
-                        makeVideoPath(`chunk-stream${quality}-${padWithZero(index + 1, 5)}.m4s`),
+                        makeVideoPath(selectedSegment.segment.init_url.split('/').pop()!),
+                        makeVideoPath(selectedSegment.segment.url.split('/').pop()!),
                     ]
                     const inspectorPath = makeVideoInspectorPath(videoUrls)
                     return <>
                         <div>
                             <Button href={inspectorPath} className="nav-text">Open Video Inspector</Button>
                         </div>
-                        <FramesListComponent videoPaths={videoUrls}></FramesListComponent>
+                        <FramesListComponent videoPaths={videoUrls.join("\n")}></FramesListComponent>
                     </>
                 }, [selectedSegment])
             }

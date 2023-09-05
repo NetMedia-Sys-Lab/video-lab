@@ -50,10 +50,8 @@ export class D3PlotLine<T> extends D3PlotBase<T> {
                 const plotDfText = df.applyAccessors<D3TextParams>({
                     x: this.xAcc,
                     y: this.yAcc,
-                    xShift: -5,
-                    yShift: 4,
-                    text: this.text,
-                    opacity: 0.4
+                    class: "line-marker",
+                    text: this.text
                 });
                 this.drawText(plot, yScale, plotDfText);
             }

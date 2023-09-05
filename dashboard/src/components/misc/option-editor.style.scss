@@ -1,0 +1,86 @@
+.options-col {
+    height: 100%;
+    border-right: 1px solid #f0f0f0;
+    display: flex;
+    flex-direction: column;
+
+    .options-table {
+        flex-grow: 1;
+        overflow-y: scroll;
+    }
+
+    table {
+        width: 100%;
+
+
+        tr {
+            min-height: 30px;
+            border-bottom: 1px solid #f0f0f0;
+            word-break: break-word;
+
+            td:nth-child(2) {
+                padding-left: 10px;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #f0f0f0;
+                }
+            }
+
+            td:first-child {
+                width: 30px;
+                padding: 0px;
+                cursor: pointer;
+                text-align: center;
+                vertical-align: middle;
+                color: rgb(230, 230, 230);
+
+                &:hover {
+                    color: rgb(126, 126, 126);
+                }
+            }
+
+
+            td:last-child {
+                width: 30px;
+                padding: 0px;
+                cursor: pointer;
+                text-align: center;
+                vertical-align: middle;
+                color: rgb(230, 230, 230);
+
+                &:hover {
+                    color: #fc7e7e;
+                }
+
+                &:active {
+                    color: #ff5959;
+                }
+            }
+
+
+        }
+
+        tr.active td:nth-child(2) {
+            background-color: #bdbdbd;
+        }
+
+        tr.selected td:first-child {
+            color: green;
+        }
+    }
+
+    .options-toolbar {
+        width: 100%;
+        background-color: #f2f2f2;
+        padding: 3px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+    }
+}
+
+.editor-col {
+    height: 100%;
+    overflow: hidden;
+}

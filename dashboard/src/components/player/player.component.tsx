@@ -26,7 +26,6 @@ const useVideoPlayer = (videoElement: React.MutableRefObject<HTMLVideoElement | 
             states && states.forEach(state => {
 
                 setTimeout(() => {
-                    console.log(videoElement.current!.currentTime, state);
                     switch (state.state) {
                         case "State.BUFFERING":
                             videoElement.current!.pause();
@@ -111,7 +110,7 @@ export const VideoPlayer = (props: {
         handleVideoSpeed,
         toggleMute,
         buffering
-    } = useVideoPlayer(videoElement, states);
+    } = useVideoPlayer(videoElement, states || [{state: "State.READY", time: 0, position: 0}]);
 
     return <>
         <div className="video-wrapper">

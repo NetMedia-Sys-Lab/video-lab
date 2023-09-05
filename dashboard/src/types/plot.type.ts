@@ -49,9 +49,7 @@ export declare type D3TextParams = {
     x: number
     y: number
     text: string
-    opacity: string
-    xShift?: number
-    yShift?: number
+    class: string
 }
 export declare type D3LineParams = {
     x: number
@@ -65,6 +63,7 @@ export declare type MarkerUpdateCallback = (markers: { start: number, end: numbe
 
 export const objectMap = function <T, T2>(obj: T, fn: (v: any, k: keyof T, i: number) => T2) {
     return Object.fromEntries(
+        // @ts-ignore
         Object.entries(obj).map(
             ([k, v], i) => [k, fn(v, k as keyof T, i)]
         )

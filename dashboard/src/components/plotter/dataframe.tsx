@@ -4,6 +4,7 @@ import { D3PlotBar, D3PlotBarProps } from "./d3-plot-bar";
 import { D3PlotBarh, D3PlotBarhProps } from "./d3-plot-barh";
 import { D3PlotBase } from "./d3-plot-base";
 import { D3PlotLine, D3PlotLineProps } from "./d3-plot-line";
+import { D3PlotRect, D3PlotRectProps } from "./d3-plot-rect";
 
 type KeysMatching<T, V> = { [K in keyof T]-?: T[K] extends V ? K : never }[keyof T];
 
@@ -46,6 +47,18 @@ export abstract class Plottable<T> {
         const yAccs: Acc<T>[] = props.yAcc ? [props.yAcc] : Object.values(this.getAllColAccs());
         plots.push(...yAccs.map(yAcc => {
             return new D3PlotBarh<T>({
+                dfGroups: this.toDfGroups(),
+                ...this.toDfGroups().plotParams,
+                yAcc,
+                ...props
+            });
+        }));
+    }
+
+    plotRect(plots: D3PlotBase<T>[], props: Partial<D3PlotRectProps<T>> = {}) {
+        const yAccs: Acc<T>[] = props.yAcc ? [props.yAcc] : Object.values(this.getAllColAccs());
+        plots.push(...yAccs.map(yAcc => {
+            return new D3PlotRect<T>({
                 dfGroups: this.toDfGroups(),
                 ...this.toDfGroups().plotParams,
                 yAcc,
@@ -147,6 +160,29 @@ export class DataFrame<T> extends Plottable<T> {
         return new DataFrame<T2>(newRows as any as T2[]);
     }
 
+    sort(sortFn: (a: T, b: T) => any) {
+        this.rows.sort(sortFn);
+    }
+
+    sortNumerical(field: keyof T) {
+        this.rows.sort((a, b) => {
+            let i = 0;
+            // @ts-ignore
+            const numsA = (a[field].toString().match(/\d+/g) || []).map((s) => parseInt(s));
+            // @ts-ignore
+            const numsB = (b[field].toString().match(/\d+/g) || []).map((s) => parseInt(s));
+            numsA.push(0);
+            numsB.push(0);
+            while (i < numsA.length && i < numsB.length && numsA[i] === numsB[i]) {
+                i++;
+            }
+            if (i === numsA.length && i === numsB.length) return 0;
+            else if (i === numsA.length) return -1;
+            else if (i === numsB.length) return 1;
+            else return numsA[i] - numsB[i];
+        });
+    }
+
     extend<T2>(accs: Record<keyof T2, Acc<T> | undefined>) {
         const ext = this.applyAccessors<T2>(accs).rows;
         return new DataFrame(this.rows.map((row, i) => ({
@@ -171,6 +207,8 @@ export class DataFrame<T> extends Plottable<T> {
                 groupIds.push(gId);
             }
         });
+
+        groupIds.sort();
 
         for (const gId of groupIds) {
             groups[gId] = this.filter((r: T, i) => applyAcc(acc, r, i) === gId);
@@ -221,7 +259,7 @@ export class DataFrame<T> extends Plottable<T> {
 
 export class DataFrameGroups<T> extends Plottable<T> {
     plotParams: Partial<D3PlotBarProps<T> & D3PlotBarhProps<T>>;
-    private groups: { [p: string]: DataFrame<T> };
+    groups: { [p: string]: DataFrame<T> };
 
     constructor(groups: { [gid: string]: (DataFrame<T> | T[]) },
                 indexField ?: keyof T,
@@ -392,6 +430,16 @@ export const sumAcc = function <T>(...accs: Acc<T>[]) {
         let val = 0;
         for (const acc of accs) {
             val += applyAcc(acc, r, i);
+        }
+        return val;
+    }
+}
+
+export const subtractAcc = function <T>(acc0: Acc<T>, ...accs: Acc<T>[]) {
+    return (r: T, i: number) => {
+        let val = applyAcc(acc0, r, i);
+        for (const acc of accs) {
+            val -= applyAcc(acc, r, i);
         }
         return val;
     }

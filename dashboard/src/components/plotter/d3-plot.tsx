@@ -14,8 +14,9 @@ export class D3Plot {
     private brush?: BrushBehavior<any>
     private xAxisGroup?: D3SelectionType;
     private idleTimeout?: NodeJS.Timeout;
-    private xrule?: D3SelectionType;
-    private ruleText?: D3SelectionType;
+    private xRule?: D3SelectionType;
+    private yRule?: D3SelectionType;
+    private xRuleText?: D3SelectionType;
 
     private yScales: d3.ScaleLinear<number, number, any>[] = [];
     private yAxisGroups: D3SelectionType[] = [];
@@ -56,7 +57,7 @@ export class D3Plot {
             .attr("x", 0)
             .attr("y", 0);
 
-        this.xrule = this.svg!.append('line')
+        this.xRule = this.svg!.append('line')
             .attr('class', 'rule')
             .style("stroke", "rgba(0,0,0,0.35)")
             .style("stroke-width", 1)
@@ -64,11 +65,20 @@ export class D3Plot {
             .attr('x2', 0)
             .attr('y1', 0)
             .attr('y2', this.innerHeight + 25)
-        this.ruleText = this.svg!.append('text')
+        this.xRuleText = this.svg!.append('text')
             .attr('class', 'rule-text')
             .text("")
             .attr('x', 0)
             .attr('y', this.innerHeight + 25)
+
+        this.yRule = this.svg!.append('line')
+            .attr('class', 'rule')
+            .style("stroke", "rgba(0,0,0,0.35)")
+            .style("stroke-width", 1)
+            .attr('x1', 0)
+            .attr('x2', this.innerWidth + 25)
+            .attr('y1', 0)
+            .attr('y2', 0)
 
         this.svg!.on('mousemove', this.updateRuler.bind(this));
         this.svg!.on('wheel', this.zoom.bind(this));
@@ -76,7 +86,6 @@ export class D3Plot {
 
     draw() {
         const xScaleExtent = this.getXScaleExtent();
-        // console.log(JSON.stringify(xScaleExtent[0]), typeof xScaleExtent[0])
         if (typeof xScaleExtent[0] === "number") {
             this.xScale = d3.scaleLinear()
                 .domain(xScaleExtent as [number, number])
@@ -92,6 +101,12 @@ export class D3Plot {
                 .style("font-size", "20px")
                 .attr("transform", `translate(0, ${this.innerHeight})`)
                 .call(d3.axisBottom(this.xScale));
+            // this.xAxisGroup
+            //     .selectAll("text")
+            //     .style("text-anchor", "end")
+            //     .attr("dx", "-.8em")
+            //     .attr("dy", ".15em")
+            //     .attr("transform", "rotate(-45)");
         }
         this.svg!.append("text")
             .attr("class", "x label")
@@ -145,7 +160,7 @@ export class D3Plot {
                 .attr("transform", "rotate(-90)")
                 .text(this.plots.map(plot => plot.yLabel).filter(Boolean).join(", "));
             plots.forEach((plot, plotIndex) => {
-                // console.log(plot.legendLabels)
+                // (plot.legendLabels)
                 plot.draw(this, this.yScales[axisIndex]);
                 plot.dfGroups.forEach((gid, df, dfIndex) => {
                     const color = applyAcc(plot.colors[dfIndex], gid, dfIndex)
@@ -161,10 +176,9 @@ export class D3Plot {
     }
 
     drawLegend() {
-        // console.log("Drawing legend", this.legend)
         const style = {
-            placement: 'top-left',
-            anchor: 'top-left',
+            placement: 'top-right',
+            anchor: 'top-right',
             spacing: 5,
             colorBoxSize: 20,
             fontSize: 20,
@@ -224,26 +238,26 @@ export class D3Plot {
         }
         const h = legendsGroup.node()?.getBBox().height!
         const w = legendsGroup.node()?.getBBox().width!
-        const pos = [0,0]
+        const pos = [0, 0]
         switch (style.placement.split("-")[0]) {
             case "top": pos[1] = 0; break;
-            case "middle": pos[1] = this.innerHeight!/2; break;
+            case "middle": pos[1] = this.innerHeight! / 2; break;
             case "bottom": pos[1] = this.innerHeight!; break;
         }
         switch (style.placement.split("-")[1]) {
             case "left": pos[0] = 0; break;
-            case "center": pos[0] = this.innerWidth!/2; break;
+            case "center": pos[0] = this.innerWidth! / 2; break;
             case "right": pos[0] = this.innerWidth!; break;
         }
         switch (style.anchor.split("-")[0]) {
-            case "top": pos[1] -= -style.spacing*2; break;
-            case "middle": pos[1] -= h/2; break;
-            case "bottom": pos[1] -= h + style.spacing*2; break;
+            case "top": pos[1] -= -style.spacing * 2; break;
+            case "middle": pos[1] -= h / 2; break;
+            case "bottom": pos[1] -= h + style.spacing * 2; break;
         }
         switch (style.anchor.split("-")[1]) {
-            case "left": pos[0] -= -style.spacing*2; break;
-            case "center": pos[0] -= w/2; break;
-            case "right": pos[0] -= w + style.spacing*2; break;
+            case "left": pos[0] -= -style.spacing * 2; break;
+            case "center": pos[0] -= w / 2; break;
+            case "right": pos[0] -= w + style.spacing * 2; break;
         }
         legendsGroup.attr('transform', `translate(${pos[0]}, ${pos[1]})`)
     }
@@ -253,7 +267,6 @@ export class D3Plot {
     }
 
     startBrush(axis: "x" | "y" | "xy", onBrushEnd: (extents: [[number, number], [number, number]]) => void) {
-        console.log("Enable brush");
         switch (axis) {
             case "x":
                 this.brush = d3.brushX()
@@ -359,10 +372,10 @@ export class D3Plot {
         }
         let xScaleExtent = mergeExtent(...extents);
         if (typeof xScaleExtent[1] === "number" && typeof xScaleExtent[0] === "number") {
-            const extendEnds = Math.abs(xScaleExtent[1] - xScaleExtent[0])*0.05;
+            const extendEnds = Math.abs(xScaleExtent[1] - xScaleExtent[0]) * 0.05;
             xScaleExtent[1] += extendEnds
             xScaleExtent[0] -= extendEnds
-            xScaleExtent = mergeExtent(xScaleExtent, [0, 0]);
+            // xScaleExtent = mergeExtent(xScaleExtent, [0, 0]);
         }
         return xScaleExtent
     }
@@ -372,7 +385,7 @@ export class D3Plot {
         extents.push(plot.getYScaleExtent());
         let yScaleExtent = mergeExtent(...extents);
         if (typeof yScaleExtent[1] === "number") {
-            yScaleExtent[1] += 2
+            yScaleExtent[1] += 1
             yScaleExtent = mergeExtent(yScaleExtent, [0, 0]);
         }
         return yScaleExtent;
@@ -455,22 +468,23 @@ export class D3Plot {
             // @ts-ignore
             // this.svg!.select(".brush").call(this.brush.move, null) // This remove the grey brush area
         }
-        // console.log("Chart brushed", extent);
 
         this.updateChart();
     }
 
     private updateRuler() {
         // @ts-ignore
-        var [xpos] = d3.mouse(this.svg!.node());
+        var [xpos, ypos] = d3.mouse(this.svg!.node());
 
-        this.xrule?.attr('x1', xpos - 2).attr('x2', xpos - 2)
+        this.xRule?.attr('x1', xpos-1).attr('x2', xpos-1)
         if (typeof this.xScale!.domain()[0] === "number") {
             // this.svg!.selectAll('.rule-text')
             const xVal = (this.xScale as d3.ScaleLinear<any, any>).invert(xpos);
-            this.ruleText!.text(xVal.toFixed(3))
+            this.xRuleText!.text(xVal.toFixed(2))
                 .attr('x', xpos + 1);
         }
+
+        this.yRule?.attr('y1', ypos-1).attr('y2', ypos-1)
 
     }
 

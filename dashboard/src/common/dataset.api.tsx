@@ -10,6 +10,12 @@ export const useDatasetTree = createUseAPI<[], any>(async () => {
     return data;
 });
 
+export const getAllInputPaths = async () => {
+    const response = await fetch(`${DatasetApi}/allInputs`);
+    const data: string[] = await response.json();
+    return data;
+}
+
 export const createBetaMpd = async (paths: string[])  => {
     const response = await fetch(`${DatasetApi}/video/createMpd?paths=${euc(paths.join(","))}`);
     const data = await response.json();
@@ -17,7 +23,6 @@ export const createBetaMpd = async (paths: string[])  => {
 }
 
 export const encodeHevcVideos = async (paths: string[], bitrates: number[], resolutions: string[], segLength: number)  => {
-    console.log(bitrates)
     const response = await fetch(`${DatasetApi}/video/encode/hevc`, {
         method: "POST",
         body: JSON.stringify({paths, bitrates, segLength, resolutions})

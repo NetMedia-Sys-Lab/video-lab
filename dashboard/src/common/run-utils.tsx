@@ -11,7 +11,6 @@ export function useFilterRuns(runs: RunOrResult[], filter: RunsFilterType) {
                 runs: result.runs &&
                     result.runs.filter(r => r.runId.toLowerCase().indexOf(filter.runId!.toLowerCase()) >= 0)
             }))
-            console.log("Filtering", f)
         }
         return f
     }, [runs, filter])

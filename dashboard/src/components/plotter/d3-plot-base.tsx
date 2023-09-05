@@ -101,14 +101,15 @@ export abstract class D3PlotBase<T> {
             .enter()
             .append("text")
             .text(d => d.text)
-            .attr("x", d => plot.xScale!(d.x as any) + (d.xShift || 0))
-            .attr("y", d => yScale(d.y) + (d.yShift || 0))
-            .attr('opacity', d => d.opacity)
+            .attr('class', d => d.class)
+            .attr("x", d => plot.xScale!(d.x as any))
+            .attr("y", d => yScale(d.y))
+            .attr('text-anchor', 'middle')
+            .attr('dominant-baseline', 'middle')
         this.plotSelections.text.push(selection);
     }
 
     protected drawLine(plot: D3Plot, yScale: d3.ScaleLinear<any, any, any>, plotDf: DataFrame<D3LineParams>) {
-        // console.log("Plotting line", plotDf, (d3.line()
         //     .x((d: any) => plot.xScale!(d.x))
         //     .y((d: any) => yScale(d.y))));
         if (plotDf.rows.length === 0) return;

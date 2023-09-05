@@ -16,21 +16,32 @@
     serverLogLevel: str*/
 
 export declare type RunConfig =  {
-    K_MAXIMUM_WINDOW: string
     resultId: string
     runId: string
-    video: string
-    beta: boolean
-    codec: string
-    protocol: string
-    length: number
-    bufferSetting: string
-    bwProfile: string
-    attempt: number
-    calculateQuality: boolean
+    _selections: {
+        analyzer: string
+        buffer: string
+        input: string
+        method: string
+        network: string
+        server: string
+    }
 
-    serverImage?: string
-    serverLogLevel?: string
+    K_MAXIMUM_WINDOW: string
+    buffer_duration: number
+    bw_profile: string
+    input: string
+    live_log: string
+    min_rebuffer_duration: string
+    min_start_duration: string
+    mod_beta: string
+    mod_downloader: string
+    mod_vq: string
+    panic_buffer_level: string
+    run_dir: string
+    run_id: string
+    safe_buffer_level: string
+    server_image: string
 }
 
 export declare type RunOrResult = RunConfig & {
