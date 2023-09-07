@@ -10,6 +10,7 @@ import { D3PlotBase } from "../plotter/d3-plot-base"
 import { D3PlotComponent } from "../plotter/d3-plot.component"
 import { DataFrame } from "../plotter/dataframe"
 import ReactJson from "react-json-view"
+import { useSavedState } from "../../common/util"
 
 function commonPrefixIndex(strs: string[]) {
     const tokens = strs.map(s => s.split("_"))
@@ -42,18 +43,17 @@ type GroupOptions = "method" | "resultId" | "bufferSelection" | "networkSelectio
 type XAxisOptions = "resultId" | "video" | "bufferSelection" | "segLength" | "K_MAXIMUM_WINDOW" | "crf" | "networkSelection" | "segDuration";
 
 type YAxisOptions = "name" | "video" | "bufferSelection" | "segLength" | "method" | "numBuffStall"
-    | "durBuffStall" | "durLongStall" | "vmaf" | "durMicroStall" | "durStall" | "quality";
+    | "durBuffStall" | "vmaf" | "durStall" | "quality";
 
 type DataRow = Record<GroupOptions | XAxisOptions | YAxisOptions, string | number>;
 
 export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] }) => {
     const [plotType, setPlotType] = useState<"line" | "bar">("line");
-    const [xAxis, setXAxis] = useState<XAxisOptions>("video");
-    const [group, setGroup] = useState<GroupOptions>('method');
-    const [yAxis, setYAxis] = useState<YAxisOptions>('durStall')
+    const [xAxis, setXAxis] = useSavedState('METHOD_PLOT_XAXIS', "video");
+    const [group, setGroup] = useSavedState('METHOD_PLOT_GROUP', 'method');
+    const [yAxis, setYAxis] = useSavedState('METHOD_PLOT_YAXIS', 'durStall')
     const [plots, setPlots] = useState<D3PlotBase<any>[]>([])
     const [selectedData, setSelectedData] = useState({});
-    const [xAxisClipLabel, setXAxisClipLabel] = useState<boolean>(false);
 
     const df: DataFrame<DataRow> | undefined = useMemo(() => {
         if (runsData.length === 0) return
@@ -62,25 +62,25 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         // Create constant color map for each run
         const runColors: { [runKey: string]: string } = {}
         runsData.forEach((runData, index) => {
-            runColors[runData.runId] = COLORS[index % COLORS.length]
+            runColors[runData.run_id] = COLORS[index % COLORS.length]
         })
 
-        const names = plotData.map(r => r.run_config.runId.split("/").join("_"))
+        const names = plotData.map(r => r.run_config.run_id.split("/").join("_"))
         const cpi = commonPrefixIndex(names)
         const csi = commonSuffixIndex(names)
         return new DataFrame<RunDataType>(plotData).mapRows(r => {
             let beta = r.run_config.mod_beta === "beta" ? "BETA" : "DASH";
             let method = beta + "_" + r.run_config.mod_downloader;
             const totalDuration = r.segments.map(seg => seg.duration).reduce((prevSum, d) => prevSum + d, 0);
-            const name = r.run_config.runId.replace("/", "_").split("_").slice(cpi, csi).join("_");
+            const name = r.run_config.run_id.replace("/", "_").split("_").slice(cpi, csi).join("_");
             const video = r.run_config.input.startsWith("https://server:443/") ? r.run_config.input.slice(19) : r.run_config.input;
-            let crfMatches = /crf(\d+)/g.exec(r.run_config.runId);
+            let crfMatches = /crf(\d+)/g.exec(r.run_config.run_id);
             let segDurMatches = /\/[a-z]+(\d+)s/g.exec(r.run_config.input);
             let videoNameMatches = /\/([a-z]+)\d+s/g.exec(r.run_config.input);
             let segmentTypeMatches = /\/[a-z]+\d+s_\d+s_((?:i|s)+)_/g.exec(r.run_config.input);
             return {
                 name,
-                resultId: r.run_config.resultId,
+                resultId: r.run_config.run_id.split('/', 1)[0],
                 video,
                 bufferSelection: r.run_config._selections?.buffer || r.run_config.buffer_duration.toString(),
                 segLength: r.segments[0].duration || 1,
@@ -89,12 +89,12 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 durBuffStall: r.dur_stall * 1000,
                 vmaf: r.vmaf.mean,
                 vmafLoss: (100 - r.vmaf.mean),
-                durMicroStall: r.micro_stalls.total_stall_duration * 1000,
-                durUnnoticeable: (r.micro_stalls.total_stall_duration - r.micro_stalls.long_stall_duration) * 1000,
+                // durMicroStall: r.micro_stalls.total_stall_duration * 1000,
+                // durUnnoticeable: (r.micro_stalls.total_stall_duration - r.micro_stalls.long_stall_duration) * 1000,
                 numSwitches: r.num_quality_switches,
-                durStall: r.dur_stall * 1000 + r.micro_stalls.total_stall_duration * 1000,
-                durLongStall: r.dur_stall * 1000 + r.micro_stalls.long_stall_duration * 1000,
-                durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration) * 100 / totalDuration,
+                // durStall: r.dur_stall * 1000 + r.micro_stalls.total_stall_duration * 1000,
+                // durLongStall: r.dur_stall * 1000 + r.micro_stalls.long_stall_duration * 1000,
+                // durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration) * 100 / totalDuration,
                 quality: new DataFrame(r.segments).avgField(r => 6 - r.quality),
                 quality_std: new DataFrame(r.segments).std(r => r.quality),
                 bitrate: new DataFrame(r.segments).avgField(r => r.bitrate),
@@ -107,7 +107,7 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 videoName: videoNameMatches ? videoNameMatches[1] : undefined,
                 segDuration: segDurMatches ? segDurMatches[1] : undefined,
                 segmentType: segmentTypeMatches ? segmentTypeMatches[1] : undefined,
-            } as DataRow
+            } as any
         }, "name")
     }, [runsData])
 
@@ -147,13 +147,13 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         //     // legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } 
         // })
         // } else {
-        const dfGroup = df.groupBy(r => r[group]).mapGroups(
+        const dfGroup = df.groupBy(r => r[group as keyof DataRow]).mapGroups(
             (groupId, df1) => {
-                const ret = df1.groupBy(r => r[xAxis]!)
+                const ret = df1.groupBy(r => r[xAxis as keyof DataRow]!)
                     .reduce((groupByValue, df2) => ({
                         [group]: groupId,
                         [xAxis]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-                        [yAxis]: df2.avgField(r => r[yAxis]!),
+                        [yAxis]: df2.avgField(r => r[yAxis as keyof DataRow]!),
                         "durBuffStall": df2.avgField(r => r.durBuffStall!),
                     }), xAxis);
                 ret.sortNumerical(xAxis);
@@ -182,7 +182,7 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
 
     function downloadJson() {
         const columns = ["durBuffStall", "durMicroStall", "durStall", "durStallPerc", "numBuffStall", "numSwitches", "vmaf", "vmafLoss", "quality", "quality_std", "bitrate", "bitrate_std"];
-        const result = df!.groupBy(r => r[xAxis]!)
+        const result = df!.groupBy(r => r[xAxis as keyof DataRow]!)
             .reduce((groupByValue, df2) => columns.reduce((o, key) => Object.assign(o, {
                 [key]: df2.avgField(r => r[key as keyof DataRow]!),
             }), {
@@ -252,10 +252,9 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 <Select.Option value="quality">Quality Level</Select.Option>
                 <Select.Option value="bitrate">Bitrate</Select.Option>
             </Select>
-            <Checkbox onChange={ev => setXAxisClipLabel(ev.target.value)}>Clip Labels</Checkbox>
             <Button onClick={downloadJson}>Download JSON</Button>
         </Space>
-        <div className="methods-plot">
+        <div className="methods-plot" style={{maxWidth: '1900px'}}>
             <D3PlotComponent
                 plots={plots}
                 // margin={{ top: 70, right: 80, bottom: 200, left: 100 }}

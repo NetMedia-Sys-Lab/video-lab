@@ -1,8 +1,8 @@
-import {useCallback, useEffect, useState} from "react";
-import {LogLineType, RunConfig} from "../types/result.type";
-import {RunDataType} from "../types/run-data.type";
+import { useCallback, useEffect, useState } from "react";
+import { LogLineType, RunConfig } from "../types/result.type";
+import { RunDataType } from "../types/run-data.type";
 import io from 'socket.io-client';
-import {KibanaQuery} from "../types/api.types";
+import { KibanaQuery } from "../types/api.types";
 
 const euc = encodeURIComponent;
 
@@ -11,40 +11,6 @@ export const ApiBase = `http://${location.hostname}:3001`;
 const HeadlessPlayerApi = `${ApiBase}/headless-player`;
 export const StaticApi = `${ApiBase}/static/runs`;
 export const JobManagerApi = `${ApiBase}/job-manager`;
-
-// readChunks() reads from the provided reader and yields the results into an async iterable
-function readChunks(reader: ReadableStreamDefaultReader) {
-    const utf8Decoder = new TextDecoder("utf-8");
-    return {
-        async* [Symbol.asyncIterator]() {
-            let {value: chunk, done: readerDone} = await reader.read();
-            chunk = chunk ? utf8Decoder.decode(chunk, {stream: true}) : "";
-
-            let re = /\r\n|\n|\r/gm;
-            let startIndex = 0;
-
-            for (; ;) {
-                let result = re.exec(chunk);
-                if (!result) {
-                    if (readerDone) {
-                        break;
-                    }
-                    let remainder = chunk.substring(startIndex);
-                    ({value: chunk, done: readerDone} = await reader.read());
-                    chunk = remainder + (chunk ? utf8Decoder.decode(chunk, {stream: true}) : "");
-                    startIndex = re.lastIndex = 0;
-                    continue;
-                }
-                yield chunk.substring(startIndex, result.index);
-                startIndex = re.lastIndex;
-            }
-            if (startIndex < chunk.length) {
-                // last line didn't end in a newline char
-                yield chunk.substring(startIndex);
-            }
-        },
-    };
-}
 
 export function createUseAPI<TParameters extends [...args: any] = [], T1 = any>(apiCallback: (...args: TParameters) => Promise<T1>) {
     return (...args: TParameters) => {
@@ -69,7 +35,7 @@ export function createUseAPI<TParameters extends [...args: any] = [], T1 = any>(
                 throw e;
             }
         }
-        
+
         useEffect(() => {
             execute();
         }, [...args])
@@ -91,10 +57,10 @@ export const useGetAllResults = createUseAPI<[], { results: RunConfig[] }>(async
 
 export const useGetRunsData = createUseAPI<[runIds: string[]],
     { [runKey: string]: RunDataType }>
-(async (runIds: string[]) => {
-    const response = await fetch(`${HeadlessPlayerApi}/runs/data?runs=${euc(runIds.join(','))}`);
-    return await response.json();
-})
+    (async (runIds: string[]) => {
+        const response = await fetch(`${HeadlessPlayerApi}/runs/data?runs=${euc(runIds.join(','))}`);
+        return await response.json();
+    })
 
 export const deleteRuns = async (runIds: string[]) => {
     const response = await fetch(`${HeadlessPlayerApi}/runs/delete`, {
@@ -104,7 +70,7 @@ export const deleteRuns = async (runIds: string[]) => {
     return await response.json();
 }
 
-export const useStateSocket = function<T>(key: string, defaultState: T) {
+export const useStateSocket = function <T>(key: string, defaultState: T) {
     const [isConnected, setIsConnected] = useState(false);
     const [state, setState] = useState(defaultState);
 
@@ -143,11 +109,21 @@ export const useStateSocket = function<T>(key: string, defaultState: T) {
     }
 }
 
-export const postNewRunConfig = async (config: any, onProgress: ((chunk: any) => void) | null = null) => {
+export const getRunConfigs = async (runIds: string[]): Promise<RunConfig[]> => {
     const requestOptions = {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(config)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({run_ids: runIds})
+    };
+    const response = await fetch(`${HeadlessPlayerApi}/runs/configs`, requestOptions);
+    return await response.json();
+}
+
+export const postNewRunConfig = async (configs: RunConfig[]) => {
+    const requestOptions = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configs)
     };
     const response = await fetch(`${HeadlessPlayerApi}/runs/new`, requestOptions);
     return await response.json();
@@ -173,7 +149,7 @@ export const calculateRunQuality = async (runIds: string[]) => {
     return await response.json();
 }
 
-export const createTilesVideo =async (runIds: string[]) => {
+export const createTilesVideo = async (runIds: string[]) => {
     const response = await fetch(`${HeadlessPlayerApi}/runs/create-tiles?runs=${euc(runIds.join(","))}`);
     return await response.json();
 }

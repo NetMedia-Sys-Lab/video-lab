@@ -1,84 +1,92 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
-    Badge,
     Button,
-    Checkbox,
-    Form,
-    FormInstance,
     Input,
-    InputNumber,
     Layout,
-    message,
     notification,
-    PageHeader,
     Progress,
-    Select,
     Space,
-    Spin, Statistic,
     Table,
-    Tabs,
-    Tag
+    Tabs
 } from "antd";
 
-import { DeleteOutlined, ExperimentOutlined, ReloadOutlined } from '@ant-design/icons';
-import { calculateRunQuality, createTilesVideo, deleteRuns, encodePlayback, postNewRunConfig, useGetAllResults, useStateSocket } from "../../common/api";
-import { RunConfig, RunOrResult, RunsFilterType } from "../../types/result.type";
+import { calculateRunQuality, createTilesVideo, deleteRuns, encodePlayback, getRunConfigs, postNewRunConfig, useStateSocket } from "../../common/api";
+import { RunsFilterType } from "../../types/result.type";
 import { ColumnsType } from "antd/lib/table";
 import { Link } from "react-router-dom";
-import { RunProgressType, RunStateType } from "../../types/run-data.type";
+import { RunProgressType } from "../../types/run-data.type";
 import { PageType } from "../../types/page.type";
 import { makeHeadlessPlayerComparePath } from "./headless-player-compare.component";
 import { makeHeadlessPlayerSinglePath } from "./headless-player-single.component";
-import { useDebouncedState, useDimensions } from "../../common/util";
 import { NewRunFormComponent } from "../../components/headless-player/new-run-form.component";
-import { useFilterRuns } from "../../common/run-utils";
-import { NewRunFormV2Component } from "../../components/headless-player/new-run-form-v2.component";
+import { DeleteOutlined, ExperimentOutlined, ReloadOutlined } from "@ant-design/icons";
 
-const { Content, Header } = Layout;
+const { Content } = Layout;
 
+
+type RunOrResultType = {
+    key: string,
+    progress: number,
+    runId: string
+} & {
+    key: string,
+    resultId: string,
+    runs: RunOrResultType[]
+}
 
 export const HeadlessPlayerComponent = () => {
-    const [selectedRuns, setSelectedRuns] = useState<RunOrResult[]>([]);
+    const [selectedRuns, setSelectedRuns] = useState<RunOrResultType[]>([]);
     const [activeTab, setActiveTab] = useState("runsHistory")
 
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
+    const [filter, setFilter] = useState<RunsFilterType>({});
 
     const { state: runStates } = useStateSocket<{ [runId: string]: RunProgressType }>("run_states", {});
 
-    const results = useGetAllResults();
-    const tabsContainerRef = useRef<HTMLDivElement>(null);
-    const tableHeight = useDimensions(tabsContainerRef).height - 150;
-    const [filter, setFilter] = useState<RunsFilterType>({});
+    const runRows = useMemo((): RunOrResultType[] => {
+        const results: {
+            [resultId: string]: {
+                runId: string
+                progress: number,
+                key: string,
+            }[]
+        } = {}
 
-    const columns: ColumnsType<RunOrResult> = [
+        for (const runId in runStates) {
+            if (filter.runId && !runId.match(filter.runId)) continue;
+            const resultId = runId.split('/', 1)[0];
+            if (!results[resultId]) results[resultId] = [];
+            results[resultId].push({
+                runId,
+                progress: runStates[runId].progress,
+                key: runId,
+            });
+        }
+
+        return Object.keys(results).map(resultId => ({
+            key: resultId,
+            resultId,
+            runs: results[resultId]
+        }) as RunOrResultType);
+    }, [runStates, filter])
+
+    const columns: ColumnsType<RunOrResultType> = [
         {
             title: 'Name',
             sorter: (a, b) => a.runId?.localeCompare(b.runId),
             render: (_, run) => <Link to={
                 run.runs
-                    ? makeHeadlessPlayerComparePath(run.runs!.map(run => run.runId))
+                    ? makeHeadlessPlayerComparePath(run.runs.map(run => run.runId))
                     : makeHeadlessPlayerSinglePath(run.runId)
-            }>{run.runId + (run.runs ? ` (${run.runs?.length})` : "")}</Link>,
+            }>{(run.runId || run.resultId) + (run.runs ? ` (${run.runs?.length})` : "")}</Link>,
             defaultSortOrder: "ascend"
-        // }, {
-        //     title: 'Input',
-        //     sorter: (a, b) => a.input?.localeCompare(b.input),
-        //     render: (_, run) => run.runs
-        //         ? <></>
-        //         : <>{run.input.startsWith("https://server:443") ? run.input.substring(18) : run.input}</>
-        // }, {
-        //     title: 'Type',
-        //     // @ts-ignore
-        //     render: (_, run) => run.runs
-        //         ? <></>
-        //         : <>{run.buffer_duration}s, {run.mod_downloader}, {run.mod_beta === "beta" ? "BETA" : "DASH"}</>
         }, {
             title: '',
             width: "100px",
-            render: (_: any, run: RunOrResult) => {
+            render: (_: any, run: RunOrResultType) => {
                 let p = runStates[run.runId]?.progress;
                 if (p) {
-                    return <Progress percent={Math.round(p * 100)} />;
+                    return <Progress percent={Math.round(p * 100)} style={{ marginBottom: 0 }} />;
                 } else if (run.runs && run.runs.length > 0) {
                     p = run.runs.map(run => runStates[run.runId]?.progress || 0)
                         .reduce((a, b) => a + b, 0)
@@ -86,7 +94,7 @@ export const HeadlessPlayerComponent = () => {
                     return p > 0 ? <Progress percent={Math.round(p * 100)} /> : '';
                 }
             }
-        }, 
+        },
         // {
         //     title: 'Actions',
         //     render: (_, run) => <>
@@ -105,39 +113,21 @@ export const HeadlessPlayerComponent = () => {
         // }
     ];
 
-    const onRowSelectionChange = (selectedRowKeys: React.Key[], selectedRows: RunOrResult[]) => {
-        setSelectedRuns(selectedRows.filter(row => row.runs == undefined));
+    const onRowSelectionChange = (selectedRowKeys: React.Key[], selectedRows: RunOrResultType[]) => {
+        setSelectedRuns(selectedRows.filter(row => row.runs === undefined));
     }
-
-    const onDelete = () => {
-        deleteRuns(selectedRuns.filter(run => !run.runs).map(run => run.runId))
-            .then(value => results.refresh())
-    }
-
-    // const submitRun = async (run: RunConfig) => {
-    //     const config = {
-    //         "resultId": run.resultId,
-    //         "videos": [run.video],
-    //         "bwProfiles": [run.bwProfile],
-    //         "repeat": 1,
-    //         "serverLogLevel": "none",
-    //         beta: [run.beta],
-    //         protocols: [run.protocol],
-    //         bufferSettings: [run.bufferSetting],
-    //         codecs: [run.codec],
-    //         lengths: [run.length],
-    //         calculateQuality: run.calculateQuality
-    //     }
-    //     await message.info(JSON.stringify(config, null, 4))
-
-    //     // return values;
-    // }
 
     return <>
         <Content style={{ margin: '0 16px', display: 'flex', flexDirection: 'column' }}>
             <Space>
-                <Button key="7" type="primary" icon={<ReloadOutlined />} onClick={results.refresh} />
-                <Button disabled={selectedRuns.length === 0} key="4" type="primary" danger icon={<DeleteOutlined />} onClick={onDelete}> Delete Selected</Button>
+                {/* <Button key="7" type="primary" icon={<ReloadOutlined />} onClick={results.refresh} /> */}
+                <Button disabled={selectedRuns.length === 0} key="4" type="primary" danger
+                    icon={<DeleteOutlined />}
+                    onClick={async () => {
+                        await deleteRuns(selectedRuns.filter(run => !run.runs).map(run => run.runId))
+                        // await results.refresh()
+                    }}
+                > Delete Selected</Button>
                 <Button disabled={selectedRuns.length === 0} key="2" type="primary" onClick={async () => {
                     const response = await calculateRunQuality(selectedRuns.map(run => run.runId))
                     await notification.success({
@@ -160,15 +150,26 @@ export const HeadlessPlayerComponent = () => {
                             message: "Success " + JSON.stringify(response)
                         });
                     }}>Create Video Tiles</Button>
+                <Button disabled={selectedRuns.length === 0} key="7" type="primary"
+                    onClick={async () => {
+                        const runs = selectedRuns.filter(run => !run.runs);
+                        // try {
+                            const runConfigs = await getRunConfigs(runs.map(run => run.runId));
+                            const res = await postNewRunConfig(runConfigs);
+                            notification.success({ message: res.message });
+                        // } catch (err) {
+                            // notification.error({ message: JSON.stringify(err) });
+                        // }
+                    }}>Rerun</Button>
             </Space>
-            <div ref={tabsContainerRef} style={{ flexGrow: '1' }}>
+            <div style={{ flexGrow: '1' }}>
                 <Tabs defaultActiveKey="1" size={"large"} activeKey={activeTab} onChange={key => setActiveTab(key)}>
                     <Tabs.TabPane tab="Runs History" key="runsHistory">
                         <Input.Search placeholder="Search Run" onSearch={(value) => {
                             setFilter({ ...filter, runId: value })
-                        }} style={{ width: 200 }} />
+                        }} style={{ width: 500 }} />
                         <Table
-                            dataSource={useFilterRuns(results.data?.results || [], filter)}
+                            dataSource={runRows}
                             columns={columns}
                             pagination={false}
                             size="small"
@@ -179,29 +180,22 @@ export const HeadlessPlayerComponent = () => {
                                 onExpandedRowsChange: expandedKeys => setExpandedRowKeys(expandedKeys as any)
                             }}
                             scroll={{
-                                y: tableHeight,
-                                x: 'max-content'
+                                // y: tableHeight,
+                                // x: 'max-content'
                             }}
                             rowSelection={{
                                 type: 'checkbox',
                                 onChange: onRowSelectionChange,
                                 checkStrictly: false,
                             }}
-                            rowKey={"runId"}
+                            rowKey={"key"}
                         />
                     </Tabs.TabPane>
-                    <Tabs.TabPane tab="New Run" key="newRun">
+                    <Tabs.TabPane tab="New Run V2" key="newRunV2">
 
                         <NewRunFormComponent onRunScheduled={(newResultId) => {
                             setExpandedRowKeys(val => [...val, newResultId])
                         }}></NewRunFormComponent>
-
-                    </Tabs.TabPane>
-                    <Tabs.TabPane tab="New Run V2" key="newRunV2">
-
-                        <NewRunFormV2Component onRunScheduled={(newResultId) => {
-                            setExpandedRowKeys(val => [...val, newResultId])
-                        }}></NewRunFormV2Component>
 
                     </Tabs.TabPane>
                 </Tabs>

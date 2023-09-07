@@ -54,7 +54,7 @@ export type RunStallType = {
 }
 
 export type RunDataType = {
-    runId: string
+    run_id: string
     run_config: RunConfig
     num_stall: number
     num_quality_switches: number
@@ -78,7 +78,7 @@ export type RunDataType = {
     bandwidth_actual: [RunBwActualType]
     bandwidth_estimate: [RunBwEstimatedType]
     vmaf: RunVmafType
-    micro_stalls: RunMicroStallsType
+    // micro_stalls: RunMicroStallsType
 }
 
 export type RunProgressType = {

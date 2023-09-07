@@ -1,11 +1,31 @@
 {
     "bufferOptions": [
         {
-            "name": "8s",
+            "name": "2s",
             "value": {
-                "buffer_duration": 8,
-                "safe_buffer_level": 6,
-                "panic_buffer_level": 2.5,
+                "buffer_duration": 2,
+                "safe_buffer_level": 2,
+                "panic_buffer_level": 1,
+                "min_rebuffer_duration": 1,
+                "min_start_duration": 1
+            }
+        },
+        {
+            "name": "3s",
+            "value": {
+                "buffer_duration": 3,
+                "safe_buffer_level": 3,
+                "panic_buffer_level": 1,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "4s",
+            "value": {
+                "buffer_duration": 4,
+                "safe_buffer_level": 3,
+                "panic_buffer_level": 1,
                 "min_rebuffer_duration": 2,
                 "min_start_duration": 2
             }
@@ -16,6 +36,66 @@
                 "buffer_duration": 5,
                 "safe_buffer_level": 3,
                 "panic_buffer_level": 1,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "6s",
+            "value": {
+                "buffer_duration": 6,
+                "safe_buffer_level": 4,
+                "panic_buffer_level": 2.5,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "7s",
+            "value": {
+                "buffer_duration": 7,
+                "safe_buffer_level": 5,
+                "panic_buffer_level": 1,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "8s",
+            "value": {
+                "buffer_duration": 8,
+                "safe_buffer_level": 6,
+                "panic_buffer_level": 2.5,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "9s",
+            "value": {
+                "buffer_duration": 9,
+                "safe_buffer_level": 6,
+                "panic_buffer_level": 2.5,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "10s",
+            "value": {
+                "buffer_duration": 10,
+                "safe_buffer_level": 6,
+                "panic_buffer_level": 2.5,
+                "min_rebuffer_duration": 2,
+                "min_start_duration": 2
+            }
+        },
+        {
+            "name": "11s",
+            "value": {
+                "buffer_duration": 11,
+                "safe_buffer_level": 6,
+                "panic_buffer_level": 2.5,
                 "min_rebuffer_duration": 2,
                 "min_start_duration": 2
             }
@@ -53,6 +133,13 @@
                 "mod_vq": "vq_fixed",
                 "mod_downloader": "quic",
                 "K_MAXIMUM_WINDOW": 12000
+            }
+        },
+        {
+            "name": "DASH_QUIC",
+            "value": {
+                "mod_downloader": "quic",
+                "K_MAXIMUM_WINDOW": 12000000
             }
         }
     ],
@@ -162,6 +249,231 @@
                     "network_manager"
                 ],
                 "bw_profile": "3215 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_2500",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "2500 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_2750",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "2750 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_3000",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "3000 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_3250",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "3250 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_3500",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "3500 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_3750",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "3750 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_4000",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "4000 35 1.0"
+            }
+        },
+        {
+            "name": "drop_6Mb_6s_3Mb",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 6\n3000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_12s_1Mb_12s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 12\n1000 35 1.0 12\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_6s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 6\n1000 35 1.0 6\n6000 35 1.0 6\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_4s_1Mb_4s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 4\n1000 35 1.0 4\n6000 35 1.0 4\n1000 35 1.0 4\n6000 35 1.0 4\n1000 35 1.0 4\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_3s_1Mb_3s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_0s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_4s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 4\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_8s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 8\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_12s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 12\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_16s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 16\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_20s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 20\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_24s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 24\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_28s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 28\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "Fluctuating_6Mb_32s_1Mb_6s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "6000 35 1.0 32\n1000 35 1.0 6\n6000 35 1.0\n"
+            }
+        },
+        {
+            "name": "bw_rel_90self",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "10000 35 1.0 0\n0.9*list(list(mpd.adaptation_sets.values())[0].representations.values())[0].bandwidth/1000 35 1.0\n"
+            }
+        },
+        {
+            "name": "fixed_2000",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "2000 35 1.0"
+            }
+        },
+        {
+            "name": "fixed_1500",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "1500 35 1.0"
+            }
+        },
+        {
+            "name": "bw_rel_100s",
+            "value": {
+                "mod_analyzer": [
+                    "network_manager"
+                ],
+                "bw_profile": "10000 35 1.0 0\n1.0*{'bbb':1424831,'tos':967053,'elephant':592827,'sintel':472036}[mpd.url.split('/')[-2].split('_')[0][:-2]]/1000 35 1.0"
             }
         }
     ]

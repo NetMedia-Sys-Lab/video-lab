@@ -53,7 +53,7 @@ export const RunTimelinePlotComponent = (props: {
     const [drawerVisible, setDrawerVisible] = useState(false);
 
     useEffect(() => {
-        setPlotData(runsData.filter(d => plotRuns[d.runId]));
+        setPlotData(runsData.filter(d => plotRuns[d.run_id]));
     }, [plotRuns, runsData])
 
     useEffect(() => {
@@ -78,12 +78,12 @@ export const RunTimelinePlotComponent = (props: {
         const runColors: { [runKey: string]: string } = {}
         const legendLabels: { [k: string]: string } = {}
         runsData.forEach((runData, index) => {
-            runColors[runData.runId] = COLORS[index % COLORS.length];
-            legendLabels[index] = runData.runId
+            runColors[runData.run_id] = COLORS[index % COLORS.length];
+            legendLabels[index] = runData.run_id
         })
 
         const plots: D3PlotBase<any>[] = [];
-        const colors = plotData.map(d => runColors[d.runId]);
+        const colors = plotData.map(d => runColors[d.run_id]);
         const segments = new DataFrameGroups<RunSegmentType>(
             objectMap(plotData, (d: RunDataType) => {
                 const segs = d.segments;
@@ -271,7 +271,7 @@ export const RunTimelinePlotComponent = (props: {
     const setAllPlotRuns = (value: boolean) => {
         setPlotRuns(runsData.reduce((obj, runData) => ({
             ...obj,
-            [runData.runId]: value
+            [runData.run_id]: value
         }), {}))
         setAllPlotRunsSelected(value)
     }
@@ -337,7 +337,7 @@ export const RunTimelinePlotComponent = (props: {
                     }} />,
                     ...runsData
                         // .sort((a, b) => b.num_stall - a.num_stall)
-                        .map((runData, index) => SettingSwitch(runData.runId, runData.runId, [
+                        .map((runData, index) => SettingSwitch(runData.run_id, runData.run_id, [
                             <Badge count={COLORS[index % COLORS.length]}
                                 style={{ backgroundColor: COLORS[index % COLORS.length] }} />
                         ], plotRuns, setPlotRuns))
@@ -373,7 +373,7 @@ export const RunTimelinePlotComponent = (props: {
                 margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
                 onMarkerUpdate={onMarkerUpdate} onLogsClick={(range) => {
                     window.open(makeKibanaLink({
-                        runIds: plotData.map(runData => runData.runId),
+                        runIds: plotData.map(runData => runData.run_id),
                         time_from: range.start,
                         time_to: range.end
                     }), '_blank')!.focus();
@@ -393,7 +393,7 @@ export const RunTimelinePlotComponent = (props: {
             {
                 useMemo(() => {
                     if (!selectedSegment) return "Please Select a segment";
-                    const makeVideoPath = (name: string) => `${StaticApi}/${plotData[selectedSegment.plotIndex].runId}/downloaded/${name}`;
+                    const makeVideoPath = (name: string) => `${StaticApi}/${plotData[selectedSegment.plotIndex].run_id}/downloaded/${name}`;
                     const index = selectedSegment.segment.index;
                     const videoUrls = [
                         makeVideoPath(selectedSegment.segment.init_url.split('/').pop()!),

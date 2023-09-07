@@ -1,4 +1,5 @@
 from logging import Logger
+import random
 import threading
 from abc import ABC, abstractmethod
 from functools import cache
@@ -35,8 +36,7 @@ def debounce(wait_time):
                 reduce_time = time() - debounced._timer_start_time
 
             # after wait_time, call the function provided to the decorator with its arguments
-            debounced._timer = threading.Timer(
-                max(0, wait_time - reduce_time), call_function)
+            debounced._timer = threading.Timer(max(0, wait_time - reduce_time), call_function)
             debounced._timer.start()
             debounced._timer_start_time = time()
 
@@ -44,6 +44,9 @@ def debounce(wait_time):
         return debounced
 
     return decorator
+
+
+REMOVE_VALUE = random.getrandbits(128)
 
 
 class StateManager(StateUpdateListener):
@@ -63,7 +66,10 @@ class StateManager(StateUpdateListener):
         self.listeners = {}
 
     def state_updated(self, key, value, broadcast=False):
-        self.states[key] = value
+        if value == REMOVE_VALUE:
+            del self.states[key]
+        else:
+            self.states[key] = value
         self.is_updated[key] = True
         if broadcast:
             self.broadcast_state(key)
@@ -86,7 +92,11 @@ class StateManager(StateUpdateListener):
             if key not in obj:
                 obj[key] = {}
             obj = obj[key]
-        obj[map_list[-1]] = val
+
+        if val == REMOVE_VALUE:
+            del obj[map_list[-1]]
+        else:
+            obj[map_list[-1]] = val
 
     def add_listener(self, sid, key, callback: Callable):
         if sid not in self.listeners:
@@ -108,40 +118,27 @@ class StateManager(StateUpdateListener):
             for listener in sid_listeners.get(key, []):
                 listener(key, self.states[key])
 
-    # def check_state_updated(self):
-    #     for key, is_updated in self.is_updated.items():
-    #         if not is_updated:
-    #             continue
-    #         self.broadcast_state(key)
-
-    # def start_background(self):
-    #     Timer(1, self.check_state_updated).start()
-
-
     def init_routes(self):
-        @self.socketio.on('state_sub')
+        @self.socketio.on("state_sub")
         def handle_state(data):
             key = data["key"]
             sid = request.sid
-            self.log.info(f'Client {sid} subscribed to state: {key}')
+            self.log.info(f"Client {sid} subscribed to state: {key}")
 
             def on_state_update(key, value):
-                self.socketio.emit('state_update', {
-                    "key": key,
-                    "value": value
-                }, room=sid)
+                self.socketio.emit("state_update", {"key": key, "value": value}, room=sid)
 
             self.add_listener(sid, key, on_state_update)
 
-        @self.socketio.on('disconnect')
+        @self.socketio.on("disconnect")
         def handle_disconnect():
             sid = request.sid
-            self.log.info(f'Client {sid} disconnect')
+            self.log.info(f"Client {sid} disconnect")
             self.remove_listeners(sid)
 
-        @self.app.post('/state/<key>')
+        @self.app.post("/state/<key>")
         def _post_update_state(key: str):
-            path = str(request.json['path'])
-            value = str(request.json['value'])
-            broadcast = bool(request.json['value'])
+            path = str(request.json["path"])
+            value = str(request.json["value"])
+            broadcast = bool(request.json["value"])
             self.state_updated_partial(key, path, value, broadcast)

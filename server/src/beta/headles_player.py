@@ -1,15 +1,14 @@
 import asyncio
 import json
 import subprocess
-from threading import Thread
-from os.path import join
-from flask import Flask, request, jsonify, Response, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 from src.job_framework.jobs.job_python import PythonJob
 from src.job_framework.server.job_manager_server import JobManagerServer
 from src.beta.codec import Codec
 from src.beta.experiment_runner import ExperimentRunner
-from src.beta.player_utils import get_all_results
+from src.beta.player_utils import get_all_results, get_configs
 from src.beta.run import get_run
+from src.state_manager import StateManager
 
 
 config_file = open("config.json")
@@ -22,12 +21,14 @@ class HeadlessPlayerApi:
     job_manager: JobManagerServer
     runner: ExperimentRunner
     loop: asyncio.AbstractEventLoop
+    state_manager: StateManager
 
-    def __init__(self, app: Flask, job_manager: JobManagerServer, runner: ExperimentRunner, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, app: Flask, job_manager: JobManagerServer, runner: ExperimentRunner, loop: asyncio.AbstractEventLoop, state_manager: StateManager) -> None:
         self.app = app
         self.job_manager = job_manager
         self.runner = runner
         self.loop = loop
+        self.state_manager = state_manager
 
     def init_routes(self):
 
@@ -45,8 +46,14 @@ class HeadlessPlayerApi:
             response.headers.add("Access-Control-Allow-Origin", "*")
             return response
 
+        @self.app.post('/headless-player/runs/configs')
+        def _get_run_configs():
+            run_ids = request.get_json(force=True)['run_ids']
+            response = jsonify(get_configs(run_ids))
+            return response
+
         @self.app.post('/headless-player/runs/new')
-        async def _start_new_experiment():
+        def _start_new_experiment():
             config = request.get_json(force=True)
             scheduled_runs = self.runner.schedule_runs(config)
             return jsonify({
@@ -54,7 +61,6 @@ class HeadlessPlayerApi:
                 'message': f"Successfully Scheduled {len(scheduled_runs)} runs.",
                 'runs': scheduled_runs
             })
-            # return Response(stream_with_context(generate()), mimetype='text')
 
         @self.app.post('/headless-player/runs/delete')
         def _delete_runs():
@@ -63,8 +69,6 @@ class HeadlessPlayerApi:
                 get_run(run_key).delete()
             return jsonify("Success")
             # return Response(stream_with_context(generate()), mimetype='text')
-
-        # TODO: Replace with job
 
         @self.app.get('/headless-player/runs/encode-playback')
         def _get_encode_playback():

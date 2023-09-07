@@ -1,8 +1,8 @@
-import { DependencyList, RefObject, useLayoutEffect, useMemo, useState } from "react";
+import { DependencyList, RefObject, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 
-export function useDebouncedState<T>(initialValue: T, deps: DependencyList=[]): [T, (val: T) => void] {
+export function useDebouncedState<T>(initialValue: T, deps: DependencyList = []): [T, (val: T) => void] {
     const initialValueMemo = useMemo(() => initialValue, deps)
     const [debouncedValue, setDebouncedValue] = useState<T>(initialValueMemo)
     const valueSetter = useMemo(() => {
@@ -68,4 +68,28 @@ export function useQueryArray(varName: string, defaultValue?: string[]) {
             return defaultValue
         }
     }, [search]);
+}
+
+export function useSavedState<T>(varName: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+    const [state, setState] = useState<T>(defaultValue);
+    const localStorageKey = `VAR_${varName}`;
+
+    useEffect(() => {
+        const storedState = localStorage.getItem(localStorageKey);
+        if (storedState) {
+            try {
+                setState(JSON.parse(storedState));
+            } catch (e) { }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(localStorageKey, JSON.stringify(state));
+        } catch (e) { }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [state]);
+
+    return [state, setState];
 }

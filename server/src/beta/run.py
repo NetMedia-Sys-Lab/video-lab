@@ -8,10 +8,11 @@ import shutil
 from datetime import datetime
 from functools import cache, cached_property
 from inspect import FrameInfo
-from os.path import join
+from os.path import join, basename, splitext, dirname
 from pathlib import Path
 from subprocess import check_output
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -146,7 +147,6 @@ class Run:
             tc_stats = []
             tc_stat_logs = ExpReader(event_log_file)
             max_time = 120 * 1000
-            i = 0
             try:
                 for event in tc_stat_logs.read_events():
                     if isinstance(event, ExpEvent_TcStat):
@@ -168,8 +168,8 @@ class Run:
     def vmaf(self):
         vmaf_files = []
         for index in self.segments_df.index:
-            quality = self.segments_df["quality"][index]
-            vmaf_files.append(join(self.vmaf_dir, f"vmaf-stream{quality}-{index+1:05d}.json"))
+            filename: str = basename(urlparse(self.segments_df["url"][index]).path)
+            vmaf_files.append(join(self.vmaf_dir, f"{splitext(filename)[0]}.json"))
 
         @run_if_mod(vmaf_files)
         def result():
@@ -189,8 +189,8 @@ class Run:
     def micro_stalls(self):
         stall_files = []
         for index in self.segments_df.index:
-            quality = self.segments_df["quality"][index]
-            stall_files.append(join(self.frames_dir, f"frames-stream{quality}-{index+1:05d}.json"))
+            filename: str = basename(urlparse(self.segments_df["url"][index]).path)
+            stall_files.append(join(self.frames_dir, f"{splitext(filename)[0]}.json"))
 
         @run_if_mod(stall_files)
         def result():
@@ -247,22 +247,30 @@ class Run:
 
     @cached_property
     def vmaf_dir(self):
-        path = join(self.run_dir, "vmaf")
-        Path(path).mkdir(exist_ok=True)
-        return path
+        vmaf_path = join(self.run_dir, "vmaf")
+        Path(vmaf_path).mkdir(exist_ok=True)
+        return vmaf_path
 
     @cached_property
     def frames_dir(self):
-        path = join(self.run_dir, "frames")
-        Path(path).mkdir(exist_ok=True)
-        return path
+        frames_path = join(self.run_dir, "frames")
+        print(f"{frames_path=}")
+        Path(frames_path).mkdir(exist_ok=True)
+        return frames_path
 
     @cached_property
     def original_video_dir(self):
-        path = join(dataset_dir, "videos", self.run_config["codec"])
-        path += f"-{self.run_config['length']}sec"
-        path = join(path, self.run_config["video"])
-        return path
+        # path = join(dataset_dir, "videos", self.run_config["codec"])
+        # path += f"-{self.run_config['length']}sec"
+        # path = join(path, self.run_config["video"])
+        print(f"{dataset_dir=}", dirname(urlparse(self.run_config["input"]).path).lstrip(os.path.sep))
+        return join(dataset_dir, dirname(urlparse(self.run_config["input"]).path).lstrip(os.path.sep))
+    
+    def get_segment_details(self, seg_path: str) -> Dict:
+        for segment in self.details['segments']:
+            if basename(urlparse(segment["url"]).path) == seg_path:
+                return segment
+        raise Exception(f"Segment not found for {seg_path}")
 
     def json(self):
         return {
@@ -281,7 +289,7 @@ class Run:
                 for ev in self.bandwidth_actual
             ],
             "vmaf": self.vmaf,
-            "micro_stalls": self.micro_stalls,
+            # "micro_stalls": self.micro_stalls,
         }
 
     def delete(self):
@@ -295,45 +303,3 @@ class Run:
         except Exception as e:
             print(f"Failed to delete {self}")
             raise e
-
-    # def get_logs(self):
-    #     logs = []
-    #     log_file = join(results_dir, self.result, self.run, "player_logs.txt")
-    #     p = re.compile(
-    #         '^(\d\d\d\d\-\d\d\-\d\d \d\d:\d\d:\d\d,\d\d\d)\s+(\w+)\s+(INFO|DEBUG|ERROR):(.+)$')
-
-    #     time = 0
-    #     tags = []
-    #     type = "INFO"
-
-    #     ev_playback_start = self.get_events("PLAYBACK_START")
-    #     if len(ev_playback_start) > 0:
-    #         time_start = ev_playback_start[0]["time"]
-    #     else:
-    #         time_start = 0
-
-    #     with open(log_file) as f:
-    #         for line in f:
-    #             m = p.match(line)
-    #             if m:
-    #                 time_abs = datetime.strptime(
-    #                     m.group(1), '%Y-%m-%d %H:%M:%S,%f').timestamp() * 1000
-    #                 if time_start == 0:
-    #                     time_start = time_abs
-    #                 time = (time_abs - time_start) / 1000
-    #                 tags = [m.group(2)]
-    #                 type = m.group(3)
-    #                 text = m.group(4)
-    #             else:
-    #                 text = line
-    #             logs.append({
-    #                 "time": time,
-    #                 "tags": tags,
-    #                 "type": type,
-    #                 "text": text
-    #             })
-
-    #     return {
-    #         "time_start": time_start / 1000,
-    #         "logs": logs
-    #     }

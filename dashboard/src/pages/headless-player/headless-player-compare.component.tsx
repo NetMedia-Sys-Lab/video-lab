@@ -15,7 +15,7 @@ export const HeadlessPlayerCompareComponent = () => {
     return <>
         <Content style={{ margin: '0 16px' }}>
             <Spin spinning={runsData.isLoading}>
-                <Tabs defaultActiveKey={"1"}>
+                <Tabs defaultActiveKey={"2"}>
                     <Tabs.TabPane tab={"Timeline Plot"} key={"1"}>
                         <RunTimelinePlotComponent runsData={Object.values(runsData.data || {})}></RunTimelinePlotComponent>
                     </Tabs.TabPane>

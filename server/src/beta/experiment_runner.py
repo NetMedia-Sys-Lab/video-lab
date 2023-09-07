@@ -2,6 +2,7 @@ import json
 from logging import Logger
 import os
 from queue import Queue
+import shutil
 import subprocess
 import sys
 from os.path import join
@@ -9,7 +10,7 @@ from pprint import pprint
 from random import shuffle
 from subprocess import check_call, check_output
 from time import sleep, time
-from typing import List, TypedDict
+from typing import Dict, List
 from flask import Flask
 from src.job_framework.server.job_manager_server import JobManagerServer
 from src.job_framework.jobs.job_python import PythonJob, register_python_job
@@ -25,28 +26,6 @@ network_ids: Queue[int] = Queue()
 for i in range(1, 255):
     network_ids.put(i)
 
-
-class RunsConfig(TypedDict):
-    result_id: str
-    # num_workers: int
-    runs: List[dict]
-
-
-# class OldRunsConfig(TypedDict):
-#     resultId: str               # ROOT
-#     numWorkers: int             # ROOT
-#     videos: List[str]           # configs[i] > input
-#     beta: List[bool]            # configs[i] > mod_beta
-#     codecs: List[str]           # configs[i] > input
-#     protocols: List[str]        # configs[i] > mod_downloader
-#     lengths: List[int]          # configs[i] > input
-#     bufferSettings: List[str]   # configs[i] > buffer_duration, safe_buffer_level, panic_buffer_level, min_rebuffer_duration, min_start_duration
-#     abr: List[str]              # configs[i] > mod_abr
-#     bwProfiles: List[str]       # configs[i] > mod_network
-#     repeat: int                 # N/A (repeated config for repeats)
-#     serverImages: List[str]     # configs[i] > serverImage
-#     serverLogLevel: str         # configs[i] > serverLogLevel
-#     extra: dict[str, List[str]] # N/A (All extra configs in separate configs)
 
 # class RunConfig(TypedDict):
 #     resultId: str
@@ -78,6 +57,8 @@ def docker_compose_up(run_config: dict):
         "UID": str(os.getuid()),
         "SSLKEYLOGFILE": CONFIG["SSLKEYLOGFILE"],
         "DATASET_DIR": CONFIG["dataset"]["datasetDir"],
+        "MY_UID": str(os.getuid()),
+        "MY_GID": str(os.getgid()),
     }
     print(json.dumps(env, indent=4))
     project_name = f"istream_player_{round(time() * 1000)}"
@@ -181,19 +162,24 @@ class ExperimentRunner:
 
     #     return configs
 
-    def schedule_runs(self, config: RunsConfig):
-        self.log.info(f"Total runs = {len(config['runs'])}")
-        shuffle(config["runs"])
-        pprint(config)
+    def schedule_runs(self, configs: List[Dict]):
+        self.log.info(f"Total runs = {len(configs)}")
+        shuffle(configs)
+        pprint(configs)
 
         subprocess.call("docker container prune -f", shell=True)
         subprocess.call("docker network prune -f", shell=True)
         scheduled_runs = []
 
-        for run in config["runs"]:
-            run["run_dir"] = run_dir = join(CONFIG["headlessPlayer"]["resultsDir"], config["result_id"], run["run_id"])
+        for run in configs:
+            run["run_dir"] = run_dir = join(CONFIG["headlessPlayer"]["resultsDir"], run["run_id"])
             if not run["input"].startswith("http"):
                 run["input"] = f"https://server:443/{run['input']}"
+            
+            # Delete any previous run with same ID (Rerun)
+            if os.path.exists(run_dir):
+                shutil.rmtree(run_dir)
+
             os.makedirs(run_dir, exist_ok=True)
             with open(join(run_dir, "config.json"), "w") as f:
                 f.write(json.dumps(run, indent=4))

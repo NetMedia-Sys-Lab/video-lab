@@ -64,7 +64,7 @@ def main():
         runs_watcher = RunsWatcher(app, state_manager)
         runner = ExperimentRunner(app, state_manager, job_manager)
         dataset = Dataset(app, job_manager, loop)
-        headless_player_api = HeadlessPlayerApi(app, job_manager, runner, loop)
+        headless_player_api = HeadlessPlayerApi(app, job_manager, runner, loop, state_manager)
         video_inspector = VideoInspector(app)
 
         # Init routes

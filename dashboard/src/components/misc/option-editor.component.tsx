@@ -9,12 +9,14 @@ import * as yaml from "js-yaml";
 const { Text } = Typography;
 
 export type OptionType = { name: string, value: { [key: string]: string | number | string[] } };
+export type ExtraTabType = { title: string, render: (opt: OptionType) => JSX.Element };
 
-export const OptionEditorComponent = ({ name, options, selectedNames, onChange }: {
+export const OptionEditorComponent = ({ name, options, selectedNames, onChange, extraTabs }: {
     name: string,
     options: OptionType[],
     selectedNames: string[],
     onChange: (options: OptionType[], selectedNames: string[]) => void,
+    extraTabs?: ExtraTabType[]
 }) => {
 
     const [open, setOpen] = useState(false);
@@ -31,7 +33,11 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange }
         if (searchFor.length === 0) return optionsMap;
 
         searchFor = searchString.toLowerCase();
-        return optionsMap.filter(([opt, idx]) => opt.name.toLowerCase().indexOf(searchFor) >= 0);
+        try {
+            return optionsMap.filter(([opt, idx]) => opt.name.toLowerCase().match(searchFor));
+        } catch (e) {
+            return optionsMap;
+        }
     }, [options, searchString])
 
     const editorRef = useRef(null);
@@ -156,9 +162,9 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange }
             title={name}
             onOk={() => setOpen(false)}
             onCancel={() => setOpen(false)}
-            visible={open}
+            open={open}
             width={1000}
-            bodyStyle={{ padding: 0, height: 400 }}
+            bodyStyle={{ padding: 0, height: '60vh' }}
             footer={[
                 selectedNames.length + " Selected | ",
                 error
@@ -274,6 +280,9 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange }
                         <Radio.Group onChange={ev => changeEditorType(ev.target.value)} value={editorType} style={{ marginBottom: 8 }}>
                             <Radio.Button value="json">JSON</Radio.Button>
                             <Radio.Button value="yaml">YAML</Radio.Button>
+                            {
+                                (extraTabs || []).map(extraTab => <Radio.Button value={extraTab.title}>{extraTab.title}</Radio.Button>)
+                            }
                         </Radio.Group>
                         <Editor
                             height="100%"
@@ -283,7 +292,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange }
                             onChange={saveValue}
                         />;
                     </>
-                        : <div><Skeleton /></div>}
+                        : <div style={{padding: 10}}><Skeleton /></div>}
                 </Col>
             </Row>
         </Modal>

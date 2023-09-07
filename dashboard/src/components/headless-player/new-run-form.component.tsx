@@ -1,234 +1,271 @@
-import { Button, Checkbox, Col, Form, FormInstance, Input, InputNumber, message, Row, Select, Space, Spin } from "antd"
-import { createRef, useState } from "react"
+import { Button, Checkbox, Col, Drawer, Form, FormInstance, Input, InputNumber, message, Row, Select, Space, Spin } from "antd"
+import { createRef, useEffect, useState } from "react"
 import { postNewRunConfig } from "../../common/api"
-import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons"
+import { EditOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons"
+import { ExtraTabType, OptionEditorComponent, OptionType } from "../misc/option-editor.component"
+import { getAllInputPaths } from "../../common/dataset.api"
+import ReactJson from "react-json-view"
+import { RunConfig } from "../../types/result.type"
+
+const HEADLESS_PLAYER_SETTING = "HEADLESS_PLAYER_SETTING";
+const HEADLESS_PLAYER_LAST_CONFIG = "HEADLESS_PLAYER_LAST_CONFIG";
+
+type HeadlessPlayerSetting = {
+    bufferOptions: OptionType[],
+    methodOptions: OptionType[],
+    // protocolOptions: OptionType[]
+    abrOptions: OptionType[]
+    serverOptions: OptionType[],
+    analyzerOptions: OptionType[],
+    networkOptions: OptionType[],
+}
+
+// type RunConfig = { [key: string]: any }
 
 export const NewRunFormComponent = (props: {
     onRunScheduled: (resultId: string) => void
 }) => {
     const { onRunScheduled } = props
     const [isScheduling, setIsScheduling] = useState(false)
-    const formRef = createRef<FormInstance>()
-    const defaultValues = JSON.parse(localStorage.getItem("new-run-last-values") || "{}")
-    const [extra, setExtra] = useState<{ prop: string, values: string[] }[]>([]);
+    // const formRef = createRef<FormInstance>()
+    // const defaultValues = JSON.parse(localStorage.getItem("new-run-last-values") || "{}")
+    const [config, setConfig] = useState<{ [key: string]: any }>({});
+    const [runConfigs, setRunConfigs] = useState<RunConfig[]>([]);
 
-    const onNewRunSubmit = (values: any) => {
-        const betas: boolean[] = values.methods.map((v: string) => v.split(",")[0] === "beta")
-        const protocols: string[] = values.methods.map((v: string) => v.split(",")[1])
-        const newResultId: string = values.resultId
-        const extraMap: any = {}
-        const config = {
-            ...values,
-            beta: betas.filter((v, i) => betas.indexOf(v) === i),
-            protocols: protocols.filter((v, i) => protocols.indexOf(v) === i),
-            codecs: values.codecs.split(","),
-            calculateVmaf: values.calculateQuality.indexOf("vmaf") >= 0,
-            extra: extraMap,
+    // Settings
+    const [inputOptions, setInputOptions] = useState<OptionType[]>([]);
+    const [bufferOptions, setBufferOptions] = useState<OptionType[]>([]);
+    const [methodOptions, setMethodOptions] = useState<OptionType[]>([]);
+    // const [protocolOptions, setProtocolOptions] = useState<OptionType[]>([]);
+    const [abrOptions, setAbrOptions] = useState<OptionType[]>([]);
+    const [serverOptions, setServerOptions] = useState<OptionType[]>([]);
+    const [analyzerOptions, setAnalyzerOptions] = useState<OptionType[]>([]);
+    const [networkOptions, setNetworkOptions] = useState<OptionType[]>([]);
+
+    useEffect(() => {
+        setConfig(JSON.parse(localStorage.getItem(HEADLESS_PLAYER_LAST_CONFIG) || "{}"));
+        // Load settings
+        const setting: HeadlessPlayerSetting = JSON.parse(localStorage.getItem(HEADLESS_PLAYER_SETTING) || "{}");
+        setMethodOptions(setting.methodOptions ?? []);
+        // setProtocolOptions(setting.protocolOptions ?? []);
+        setBufferOptions(setting.bufferOptions ?? []);
+        setAbrOptions(setting.abrOptions ?? []);
+        setServerOptions(setting.serverOptions ?? []);
+        setAnalyzerOptions(setting.analyzerOptions ?? []);
+        setNetworkOptions(setting.networkOptions ?? []);
+        getAllInputPaths().then(inputPaths => {
+            setInputOptions(inputPaths.map(path => {
+                let name = path;
+                if (name.endsWith("output.mpd")) {
+                    name = name.split("/").slice(0, -1).join("/");
+                }
+                return { name, value: { "input": path } }
+            }));
+        })
+    }, []);
+
+    useEffect(() => {
+        // Save settings
+        const setting: HeadlessPlayerSetting = JSON.parse(localStorage.getItem(HEADLESS_PLAYER_SETTING) || "{}");
+        setting.bufferOptions = bufferOptions;
+        // setting.protocolOptions = protocolOptions;
+        setting.methodOptions = methodOptions;
+        setting.abrOptions = abrOptions;
+        setting.serverOptions = serverOptions;
+        setting.analyzerOptions = analyzerOptions;
+        setting.networkOptions = networkOptions;
+        localStorage.setItem(HEADLESS_PLAYER_SETTING, JSON.stringify(setting, null, 4));
+    }, [bufferOptions, methodOptions, abrOptions, serverOptions, analyzerOptions, networkOptions])
+
+    useEffect(() => {
+        // Generate run configs
+        let runs: RunConfig[] = [{
+            run_id: config.resultId + "/" + Math.floor(Date.now() / 100).toString(),
+            _selections: {}
+        } as any];
+        const permutate = (options: OptionType[], optionName: string, addToId: boolean = true) => {
+            if (!options || options.length === 0) return;
+            const prevRuns = [...runs];
+            runs = [];
+            for (const option of options) {
+                for (const run of prevRuns) {
+                    let newRun: RunConfig = { ...run, _selections: { ...run._selections, [optionName]: option.name } };
+                    if (addToId) {
+                        newRun.run_id += '_' + option.name.replaceAll("/", '_').replaceAll("-", '_');
+                    }
+                    for (const key in option.value) {
+                        // @ts-ignore
+                        if (newRun[key] === undefined) {
+                            // @ts-ignore
+                            newRun[key] = option.value[key];
+                            continue;
+                        }
+                        let newVal = option.value[key];
+                        if (typeof newVal !== "object") {
+                            // @ts-ignore
+                            newVal = [newVal];
+                        }
+                        // @ts-ignore
+                        let oldVal = newRun[key];
+                        if (typeof oldVal !== "object") {
+                            // @ts-ignore
+                            oldVal = [oldVal];
+                        }
+                        // @ts-ignore
+                        newRun[key] = [...oldVal, ...newVal];
+                    }
+                    runs.push(newRun);
+                }
+            }
         }
-        for (const extraItem of extra) {
-            extraMap[extraItem.prop] = extraItem.values
+        permutate(config.input, "input");
+        permutate(config.method, "method");
+        permutate(config.buffer, "buffer");
+        permutate(config.abr, "abr");
+        permutate(config.server, "server", false);
+        permutate(config.analyzer, "analyzer", false);
+        permutate(config.network, "network");
+
+        const repeatedRuns = [];
+        for (let i = 1; i <= config.repeat; i++) {
+            for (const run of runs) {
+                repeatedRuns.push({ ...run, run_id: run.run_id + "_" + i })
+            }
         }
-        localStorage.setItem('new-run-last-values', JSON.stringify({...values, extra}))
-        setIsScheduling(true)
-        postNewRunConfig(config)
-            .then(res => {
-                message.success(res.message)
-                setIsScheduling(false)
-                // results.refresh().then(res => {
-                //     setExpandedRowKeys([
-                //         ...expandedRowKeys,
-                //         newResultId
-                //     ])
-                // })
-                onRunScheduled(newResultId)
-            })
+
+        setRunConfigs(repeatedRuns);
+    }, [config]);
+
+    const submit = () => {
+        setIsScheduling(true);
+        localStorage.setItem(HEADLESS_PLAYER_LAST_CONFIG, JSON.stringify(config, null, 4));
+        postNewRunConfig(runConfigs).then(res => {
+            message.success(res.message);
+            onRunScheduled(config.resultId);
+        })
             .catch(res => {
                 message.error(JSON.stringify(res))
-                setIsScheduling(false)
             })
-    }
-
-    const resetForm = () => {
-        const values = {
-            ...defaultValues,
-            resultId: defaultValues.resultId.replace(/\d+$/, '')
-                + (parseInt((defaultValues.resultId.match(/\d+$/) || [0])[0], 10) + 1).toString().padStart(3, '0')
-        }
-        formRef.current?.setFieldsValue(values)
-        setExtra(values.extra || [])
+            .finally(() => {
+                setIsScheduling(false);
+                setConfig({ ...config });
+            })
     }
 
     return <Spin tip="Scheduling" spinning={isScheduling}>
-        <Form
-            id="new-run-form"
-            ref={formRef}
-            name="newRunForm"
-            labelCol={{ span: 8 }}
-            wrapperCol={{ span: 8 }}
-            // initialValues={{remember: true}}
-            onFinish={onNewRunSubmit}
-            onReset={resetForm}
-            // onFinishFailed={onFinishFailed}
-            autoComplete="on"
-        >
-            <Form.Item
-                label="Result ID"
-                name="resultId"
-                rules={[{ required: true }]}
-            >
-                <Input />
-            </Form.Item>
-            <Form.Item
-                label="Videos"
-                name="videos"
-                rules={[{ required: true, message: 'Please select videos!' }]}
-            >
-                <Select mode="multiple" placeholder="Select Videos">
-                    {["Aspen", "BBB", "Burn", "Football"].map(video => <Select.Option
-                        key={video}>{video}</Select.Option>)}
-                </Select>
-            </Form.Item>
-            <Form.Item label="Methods" name="methods" rules={[{ required: true }]}>
-                <Checkbox.Group>
-                    {/*<Checkbox.Group options={[*/}
-                    {/*    {label: "QUIC", value: "beta,quic"},*/}
-                    {/*    {label: "BETA", value: "beta,tcp"},*/}
-                    {/*    {label: "DASH", value: "nonbeta,tcp"},*/}
-                    {/*]} defaultValue={defaultValues.methods}/>*/}
-                    <Checkbox value={"beta,quic"}>QUIC</Checkbox>
-                    <Checkbox value={"beta,tcp"}>BETA</Checkbox>
-                    <Checkbox value={"nonbeta,tcp"}>DASH</Checkbox>
-                </Checkbox.Group>
-            </Form.Item>
 
-            <Form.Item label="Codecs" name="codecs" rules={[{ required: true }]}>
-                <Select placeholder="Select Codecs" allowClear>
-                    <Select.Option value={"hevc"}>HEVC</Select.Option>
-                    <Select.Option value={"av1"}>AV1</Select.Option>
-                    <Select.Option value={"hevc,av1"}>HEVC & AV1</Select.Option>
-                </Select>
-            </Form.Item>
+        <table className="new-run-table">
+            <tr>
+                <th>Result ID</th>
+                <td><Input value={config.resultId} onChange={(event) => setConfig({ ...config, resultId: event.target.value })} /></td>
+            </tr>
 
-            <Form.Item label="Segment Lengths" name="lengths" rules={[{ required: true }]}>
-                <Checkbox.Group>
-                    <Checkbox value={1}>1 sec</Checkbox>
-                    <Checkbox value={2}>2 sec</Checkbox>
-                </Checkbox.Group>
-            </Form.Item>
+            <ConfigParamSelect label="Inputs" value={config.input} options={inputOptions} setOptions={setInputOptions} onChange={(val) => setConfig({ ...config, input: val })} extraTabs={[
+                // {
+                //     title: "output.mpd",
+                //     render: (opt: OptionType) =>
+                //         <pre>
+                //             {JSON.stringify(opt.value, null, 4)}
+                //         </pre>
+                // }
+            ]} />
+            <ConfigParamCheckbox label="Methods" selectedOptions={config.method} options={methodOptions} setOptions={setMethodOptions} onChange={(val) => setConfig({ ...config, method: val })} />
+            {/* <ConfigParamCheckbox label="Protocols" value={config.protocol} options={protocolOptions} setOptions={setProtocolOptions} onChange={(val) => setConfig({ ...config, protocol: val })} /> */}
+            <ConfigParamCheckbox label="Buffer Settings" selectedOptions={config.buffer} options={bufferOptions} setOptions={setBufferOptions} onChange={(val) => setConfig({ ...config, buffer: val })} />
+            <ConfigParamCheckbox label="Adaptation Algorithm" selectedOptions={config.abr} options={abrOptions} setOptions={setAbrOptions} onChange={(val) => setConfig({ ...config, abr: val })} />
+            <ConfigParamCheckbox label="Server" selectedOptions={config.server} options={serverOptions} setOptions={setServerOptions} onChange={(val) => setConfig({ ...config, server: val })} />
+            <ConfigParamCheckbox label="Analyzers" selectedOptions={config.analyzer} options={analyzerOptions} setOptions={setAnalyzerOptions} onChange={(val) => setConfig({ ...config, analyzer: val })} />
+            <ConfigParamSelect label="Network" value={config.network} options={networkOptions} setOptions={setNetworkOptions} onChange={(val) => setConfig({ ...config, network: val })} />
 
-            <Form.Item label="Buffer Setting" name="bufferSettings" rules={[{ required: true }]}>
-                <Checkbox.Group>
-                    <Checkbox value={"long-buffer"}>long-buffer</Checkbox>
-                    <Checkbox value={"long-buffer-5"}>long-buffer-5</Checkbox>
-                    <Checkbox value={"long-buffer-7"}>long-buffer-7</Checkbox>
-                    <Checkbox value={"long-buffer-9"}>long-buffer-9</Checkbox>
-                    <Checkbox value={"short-buffer"}>short-buffer</Checkbox>
-                </Checkbox.Group>
-            </Form.Item>
+            <tr>
+                <th>Repeat</th>
+                <td><InputNumber min={1} max={100} defaultValue={1} onChange={repeat => setConfig({ ...config, repeat })} /></td>
+            </tr>
 
-            <Form.Item label="Adaptation Algorithm" name="abr" rules={[{ required: true }]}>
-                <Checkbox.Group>
-                    <Checkbox value={"default"}>Default</Checkbox>
-                    <Checkbox value={"buffer-based"}>Buffer Based</Checkbox>
-                    <Checkbox value={"bandwidth-based"}>Bandwidth Based</Checkbox>
-                    <Checkbox value={"hybrid"}>Hybrid</Checkbox>
-                </Checkbox.Group>
-            </Form.Item>
-
-            <Form.Item label="Bandwidth Profiles" name="bwProfiles" rules={[{ required: true }]}>
-                <Select mode={"multiple"} placeholder="Select Bandwidth Profiles" allowClear>
-                    <Select.Option value={"drop"}>Drop</Select.Option>
-                    <Select.Option value={"drop-low"}>Drop Low</Select.Option>
-                    <Select.Option value={"multi-drop"}>Multi Drop</Select.Option>
-                </Select>
-            </Form.Item>
-
-            <Form.Item label="Calculate Quality" name="calculateQuality" rules={[{ required: false }]}>
-                <Checkbox.Group>
-                    <Checkbox value={"vmaf"}>VMAF</Checkbox>
-                </Checkbox.Group>
-            </Form.Item>
-
-
-            <Form.Item label="Repeat" name="repeat" rules={[{ required: true }]}>
-                <InputNumber min={1} max={20} />
-            </Form.Item>
-
-            <Form.Item label="Server Log Level" name="serverLogLevel" rules={[{ required: true }]}>
-                <Select defaultValue="none">
-                    <Select.Option value={"none"}>None</Select.Option>
-                    <Select.Option value={"debug"}>Debug</Select.Option>
-                </Select>
-            </Form.Item>
-
-            
-            {extra.map((extraItem, extraIndex) => 
-                <Row>
-                    <Col span={4} offset={4} style={{textAlign: "right", paddingRight: 10, flexDirection: 'row'}}>
-                        <Space>
-                        <MinusCircleOutlined
-                            onClick={() => setExtra([
-                                ...extra.slice(0, extraIndex),
-                                ...extra.slice(extraIndex+1)
-                            ])}
-                        />
-                        <Input
-                            value={extraItem.prop}
-                            onChange={(ev) => setExtra([
-                                ...extra.slice(0, extraIndex),
-                                {...extraItem, prop: ev.target.value},
-                                ...extra.slice(extraIndex+1)
-                            ])}
-                            style={{width: '100%', textAlign: "right"}}
-                        />
-                        </Space>
-                    </Col>
-                    <Col span={8}>
-                        <Select
-                            mode="tags"
-                            placeholder={"Values"}
-                            value={extraItem.values}
-                            style={{width: '100%'}}
-                            onChange={(value) => setExtra([
-                                ...extra.slice(0, extraIndex),
-                                {...extraItem, values: value},
-                                ...extra.slice(extraIndex+1)
-                            ])}
-                        />
-                    </Col>
-
-                </Row>
-            )}
-
-            
-
-
-            <Form.Item wrapperCol={{
-                offset: 8,
-                span: 8
-            }}>
-            <Button
-                type="dashed"
-                onClick={() => setExtra([...extra, {prop: 'KEY', values: []}])}
-                style={{ width: '100%', marginTop: 10, marginBottom: 20 }}
-                icon={<PlusOutlined />}
-            >
-                Add field
-            </Button>
-                <Space>
-                    <Button type="primary" htmlType="submit">
+            <tr>
+                <th></th>
+                <td>
+                    <Button type="primary" onClick={submit}>
                         Submit
                     </Button>
-                    <Button htmlType="reset">
+                    <Button>
                         Reset
                     </Button>
-                </Space>
-            </Form.Item>
+                </td>
+            </tr>
 
+            <tr>
+                <th></th>
+                <td><ReactJson src={runConfigs ?? {}} collapsed={1} /></td>
+            </tr>
+        </table>
 
-            <Row>
-                <Col span={8} offset={8}><pre>{ JSON.stringify(extra, null ,4) }</pre></Col>
-            </Row>
-        </Form>
     </Spin>
+}
+
+const ConfigParamCheckbox = ({ label, onChange, options, setOptions, selectedOptions }: {
+    label: string, selectedOptions: OptionType[], onChange: (option: OptionType[]) => void,
+    options: OptionType[], setOptions: (options: OptionType[]) => void
+}) => {
+    const optionNames = (options || []).map((opt: OptionType) => opt.name);
+    const selectedNames = (selectedOptions || []).map((opt: OptionType) => opt.name);
+    return <tr>
+        <th>{label} ({selectedNames.length})</th>
+        <td>
+            <div>
+                <OptionEditorComponent
+                    name={label + " Settings"}
+                    options={options}
+                    selectedNames={selectedNames}
+                    onChange={(options, selectedNames) => {
+                        setOptions(options);
+                        onChange(options.filter(opt => selectedNames.indexOf(opt.name) >= 0));
+                    }} />
+                <Checkbox.Group
+                    value={selectedNames}
+                    options={optionNames}
+                    onChange={(selectedNames) => {
+                        onChange(options.filter(opt => selectedNames.indexOf(opt.name) >= 0));
+                    }}
+                    style={{ marginLeft: 8 }}
+                />
+            </div>
+        </td>
+    </tr>
+}
+
+const ConfigParamSelect = ({ label, onChange, options, setOptions, value, extraTabs }: {
+    label: string, value: OptionType[], onChange: (option: OptionType[]) => void,
+    options: OptionType[], setOptions: (options: OptionType[]) => void,
+    extraTabs?: ExtraTabType[]
+}) => {
+    const selectedNames = (value || []).map((opt: OptionType) => opt.name);
+    return <tr>
+        <th>{label} ({selectedNames.length})</th>
+        <td>
+            <div style={{ display: "flex" }}>
+                <OptionEditorComponent
+                    name={label + " Settings"}
+                    options={options}
+                    selectedNames={selectedNames}
+                    onChange={(options, selectedNames) => {
+                        setOptions(options)
+                        onChange(options.filter(opt => selectedNames.indexOf(opt.name) >= 0));
+                    }}
+                    extraTabs={extraTabs}
+                />
+                <Select
+                    mode={"multiple"}
+                    placeholder={"Select " + label}
+                    allowClear
+                    value={selectedNames}
+                    onChange={(selectedNames: string[]) => {
+                        onChange(options.filter(opt => selectedNames.indexOf(opt.name) >= 0));
+                    }}
+                    style={{ flexGrow: 1, marginLeft: 8 }}>
+                    {(options || []).map(option => <Select.Option value={option.name} key={option.name}>{option.name}</Select.Option>)}
+                </Select>
+            </div>
+        </td>
+    </tr>
 }

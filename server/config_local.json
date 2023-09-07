@@ -15,5 +15,6 @@
     },
     "vmafDir": "/home/akram/ucalgary/research/video-lab/server/third_party/vmaf",
     "cacheDir": "/home/akram/ucalgary/research/tmp",
-    "SSLKEYLOGFILE": "/home/akram/ucalgary/research/certs/ssl_keylog.txt"
+    "SSLKEYLOGFILE": "/home/akram/ucalgary/research/certs/ssl_keylog.txt",
+    "fontFile": "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 }

@@ -1,6 +1,6 @@
 import "./style.scss"
 import { DatabaseOutlined } from '@ant-design/icons';
-import { Button, Input, InputNumber, Layout, Modal, Spin, Tree, TreeDataNode } from 'antd';
+import { Button, Input, InputNumber, Layout, Modal, Spin, Tree } from 'antd';
 import { useState } from 'react';
 import ReactJson from 'react-json-view';
 import { createBetaMpd, createDashPlaylist, encodeHevcVideos, useDatasetTree } from '../../common/dataset.api';
@@ -91,7 +91,9 @@ export const DatasetPageComponent = (props: {}) => {
                         <InputNumber 
                             placeholder="Segment length in seconds" 
                             value={encodeProps.segLength} 
-                            onChange={val => setEncodeProps(ep => ({...ep, segLength: val}))}
+                            min={1}
+                            max={100}
+                            onChange={val => setEncodeProps(ep => ({...ep, segLength: val || 1}))}
                         />
                     </td>
                 </tr>
@@ -118,7 +120,7 @@ export const DatasetPageComponent = (props: {}) => {
                         <InputNumber 
                             placeholder="Segment length in seconds" 
                             value={dashProps.segLength} 
-                            onChange={val => setDashProps(ep => ({...ep, segLength: val}))}
+                            onChange={val => setDashProps(ep => ({...ep, segLength: val || 1}))}
                         />
                     </td>
                 </tr>

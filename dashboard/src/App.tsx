@@ -1,6 +1,6 @@
 import "./App.scss";
-import { ExperimentOutlined, UnorderedListOutlined, VideoCameraOutlined } from '@ant-design/icons';
-import { Button, MenuProps, PageHeader } from 'antd';
+import { ExperimentOutlined, MenuFoldOutlined, MenuUnfoldOutlined, UnorderedListOutlined, VideoCameraAddOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { Button, MenuProps, theme } from 'antd';
 import { Layout, Menu } from 'antd';
 import React, { useState } from 'react';
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
@@ -18,19 +18,20 @@ type MenuItem = Required<MenuProps>['items'][number];
 
 const App: React.FC = () => {
     const [collapsed, setCollapsed] = useState(true);
+    const {
+        token: { colorBgContainer },
+    } = theme.useToken();
 
     return (
         <BrowserRouter>
             <Layout style={{ height: '100vh' }}>
-                <Sider style={{
-                    zIndex: 1001,
-                    // overflow: 'auto',
-                    // height: '100vh',
-                    // position: 'fixed',
-                    // left: 0,
-                    // top: 0,
-                    // bottom: 0,
-                }} collapsible collapsed={collapsed}
+                <Sider
+                    style={{
+                        zIndex: 2,
+                        overflow: 'auto',
+                        height: '100vh',
+                        position: 'fixed',
+                    }} collapsible collapsed={collapsed}
                     onCollapse={value => setCollapsed(value)}>
                     <a href="/">
                         <div className={`logo ${collapsed && 'collapsed'}`}>
@@ -50,25 +51,57 @@ const App: React.FC = () => {
                             )}
                     </Menu>
                 </Sider>
-                <div style={{ overflow: "scroll", height: "100vh", width: "100%" }}>
-                    <Layout style={{ backgroundColor: "white", maxWidth: 1400, margin: "auto", minHeight: '100vh' }} className="site-layout">
-                        <PageHeader
-                            title={<Routes>{Pages.map((page, i) =>
-                                <Route key={i} path={page.routerPath} element={page.title} />
-                            )}</Routes>}
-                            onBack={() => window.history.back()}
-                            extra={[
-                                <JobsListDrawerComponent key="2" />
-                            ]}>
-                        </PageHeader>
+                <Layout style={{ marginLeft: collapsed ? 80 : 200 }}>
+                    <Header
+                        style={{
+                            padding: 0,
+                            background: colorBgContainer,
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 1
+                        }}
+                    // title={}
+                    // onBack={() => window.history.back()}
+                    // extra={[
+                    //     
+                    // ]}
+                    >
+                        <Button
+                            type="text"
+                            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                            onClick={() => setCollapsed(!collapsed)}
+                            style={{
+                                fontSize: '16px',
+                                width: 64,
+                                height: 64,
+                            }}
+                        />
+                        <Routes>{Pages.map((page, i) =>
+                            <Route key={i} path={page.routerPath} element={page.title} />
+                        )}</Routes>
+                        <span style={{float: "right", paddingRight: 20}}>
+                            <JobsListDrawerComponent key="2" />
+                        </span>
+                    </Header>
+                    <Content
+                        style={{
+                            margin: '24px 16px',
+                            padding: 24,
+                            minHeight: 280,
+                            
+                            background: colorBgContainer,
+                            overflow: "auto",
+                        }}
+                    >
                         <Routes>
                             {Pages.map((page, i) =>
                                 <Route key={i} path={page.routerPath} element={page.component}>
                                 </Route>
                             )}
                         </Routes>
-                    </Layout>
-                </div>
+                    </Content>
+                </Layout>
+                {/* </div> */}
             </Layout>
         </BrowserRouter>
     );

@@ -16,8 +16,6 @@
     serverLogLevel: str*/
 
 export declare type RunConfig =  {
-    resultId: string
-    runId: string
     _selections: {
         analyzer: string
         buffer: string
@@ -44,9 +42,9 @@ export declare type RunConfig =  {
     server_image: string
 }
 
-export declare type RunOrResult = RunConfig & {
-    runs?: RunConfig[]
-}
+// export declare type RunOrResult = RunConfig & {
+//     runs?: RunConfig[]
+// }
 
 export declare type LogLineType = {
     time: number

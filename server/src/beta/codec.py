@@ -10,9 +10,9 @@ from threading import Lock
 import subprocess
 import sys
 import time
-from os.path import join, exists, basename, normpath
+from os.path import join, exists, basename, normpath, splitext
 from pathlib import Path
-from typing import Dict, List, Optional, TypeVar
+from typing import Dict, Generator, List, Optional, Tuple, TypeVar
 
 from fs.tempfs import TempFS
 from src.job_framework.server.job_manager_server import JobManagerServer
@@ -32,23 +32,32 @@ mutex_enc = Lock()
 mutex_vmaf = Lock()
 mutex_frames = Lock()
 
-U = TypeVar('U')
+U = TypeVar("U")
+
+
 def not_none(inst: Optional[U]) -> U:
     """Not-none helper"""
     assert inst is not None
     return inst
 
+
+def read_bytes(filepath: str) -> bytes:
+    with open(filepath, "rb") as f:
+        return f.read()
+
+
 @cache
-def md5(path, chunk_size = 65536):
-    pts = time.process_time()
-    ats = time.time()
+def md5(path, chunk_size=65536):
+    # pts = time.process_time()
+    # ats = time.time()
     m = hashlib.md5()
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         b = f.read(chunk_size)
         while len(b) > 0:
             m.update(b)
             b = f.read(chunk_size)
     return m.hexdigest()
+
 
 class Codec:
     run: Run
@@ -57,79 +66,99 @@ class Codec:
         self.run = run
         pass
 
-    def get_quality_and_index(self, seg_path):
-        r = re.compile("(?:chunk|seg)-stream(\\d)-(\\d{5})(?:-o)?(?:-e)?(?:.mp4|.m4s)$")
-        s = r.search(seg_path)
-        if s is not None:
-            return int(s.group(1)), int(s.group(2))
+    def get_quality_and_index(self, seg_path) -> Tuple[int, int] | Tuple[None, None]:
+        filename = basename(splitext(seg_path)[0])
+        nums = re.findall(r"\d+", filename)
+        if len(nums) >= 2:
+            return int(nums[-2]), int(nums[-1])
+        elif len(nums) == 1:
+            return 1, int(nums[-1])
         else:
             return None, None
 
-    def get_downloaded_segments(self):
+    def get_downloaded_segments(self) -> List[str]:
         Path(self.run.segments_dir).mkdir(exist_ok=True)
         list_dir = os.listdir(self.run.downloads_dir)
         list_dir.sort()
-        for seg_name in list_dir:
-            quality, index = self.get_quality_and_index(seg_name)
+        seg_paths = []
+        for seg_path in list_dir:
+            quality, index = self.get_quality_and_index(seg_path)
             if not quality or not index:
                 continue
-            init_name = f"init-stream{quality}.m4s"
-            yield (quality, index)
+            seg_paths.append((index, join(self.run.downloads_dir, seg_path)))
+        seg_paths.sort()
+        seg_paths = list(map(lambda x: x[1], seg_paths))
+        return seg_paths
 
-    def get_original_segment(self, quality: int, index: int):
-        seg_path = join(self.run.original_video_dir,
-                        f"chunk-stream{quality}-{index:05d}.m4s")
-        init_path = join(self.run.original_video_dir,
-                         f"init-stream{quality}.m4s")
+    def get_original_segment(self, seg_path) -> str:
         mutex_enc.acquire()
-        if not exists(join(self.run.original_video_dir, 'encoded')):
-            os.mkdir(join(self.run.original_video_dir, 'encoded'))
-        enc_path = join(self.run.original_video_dir, 'encoded',
-                        f"seg-stream{quality}-{index:05d}.mp4")
+
+        filename = basename(seg_path)
+        seg_path = join(self.run.original_video_dir, filename)
+        init_path = join(self.run.original_video_dir, basename(self.run.get_segment_details(filename)["init_url"]))
+        print(f"{self.run.original_video_dir=}")
+        enc_dir = join(self.run.original_video_dir, "encoded")
+        enc_path = join(enc_dir, splitext(filename)[0] + ".mp4")
+
+        if not exists(enc_dir):
+            os.mkdir(enc_dir)
+
         if not exists(enc_path):
-            filter = f"scale=1920:1080"
-            filter += f",tpad=stop_mode=clone:stop=-1,trim=end={self.run.run_config['length']}"
-            Ffmpeg.decode_segment(
-                [init_path, seg_path], enc_path, filter)
+            filter = "scale=1920:1080"
+            Ffmpeg.decode_segment(read_bytes(init_path) + read_bytes(seg_path), enc_path, filter)
+
         mutex_enc.release()
         return enc_path
 
-    def get_encoded_segment(self, quality: int, index: int, overlay = False, extend = False):
+    def get_encoded_segment(self, seg_path: str, overlay=False, extend=False) -> str:
+        filename = basename(seg_path)
+        seg_details = self.run.get_segment_details(filename)
+        init_path = join(self.run.downloads_dir, basename(seg_details["init_url"]))
+        quality, index = self.get_quality_and_index(seg_path)
+
         # Optimization: If the whole segment is downloaded, return the orignal segment
-        if overlay==False and self.run.details['segments'][index-1]['ratio'] == 1:
-            return self.get_original_segment(quality, index)
-        enc_path = join(self.run.segments_dir,
-                        f"seg-stream{quality}-{index:05d}")
+        if not overlay and seg_details["received_bytes"] == seg_details["total_bytes"]:
+            return self.get_original_segment(seg_path)
+
+        # Make encoded video path
+        enc_path = join(self.run.segments_dir, splitext(filename)[0])
         if overlay:
-            enc_path += '-o'
+            enc_path += "-o"
         if extend:
-            enc_path += '-e'
+            enc_path += "-e"
         enc_path += ".mp4"
+
         if not exists(enc_path):
-            filter = f"scale=1920:1080"
+            filter = "scale=1920:1080"
             if extend:
-                filter += f",tpad=stop_mode=clone:stop=-1,trim=end={self.run.run_config['length']}"
+                filter += f",tpad=stop_mode=clone:stop=-1,trim=end={seg_details['duration']}"
             if overlay:
                 filter += "," + FfmpegCompose.filter_drawstring(f"Segment\\:{index}, Quality\\: {quality}", 0, 0, box=True)
-            print(filter)
-            Ffmpeg.decode_segment([
-                join(self.run.downloads_dir, f"init-stream{quality}.m4s"),
-                join(self.run.downloads_dir,
-                     f"chunk-stream{quality}-{index:05d}.m4s")
-            ], enc_path, filter)
+            print(seg_path)
+
+            seg_bytes = read_bytes(seg_path)
+            samples = Ffmpeg.get_samples(seg_bytes, seg_details["total_bytes"])
+            print(len(seg_bytes), samples)
+            while samples and (samples[-1][0] + samples[-1][1]) > len(seg_bytes):
+                samples.pop()
+            assert len(samples) > 0, f"No sample left for {seg_path}"
+            print("Samples left : ", len(samples))
+            seg_bytes = seg_bytes[: samples[-1][0] + samples[-1][1]]
+            seg_bytes += b"\0" * (seg_details["total_bytes"] - len(seg_bytes))
+
+            Ffmpeg.decode_segment(read_bytes(init_path) + seg_bytes, enc_path, filter)
         return enc_path
 
-    def encode_playback(self):
+    def encode_playback(self) -> str:
         playback_path = join(self.run.downloads_dir, "playback.mp4")
         if exists(playback_path):
             return playback_path
         enc_segments = []
-        for quality, index in self.get_downloaded_segments():
-            enc_segments.append(self.get_encoded_segment(quality, index, overlay=True, extend=True))
-        enc_segments.sort(key=lambda s: not_none(self.get_quality_and_index(s)[1]))
+        for seg_path in self.get_downloaded_segments():
+            enc_segments.append(self.get_encoded_segment(seg_path, overlay=True, extend=True))
         Ffmpeg.concat_segments(enc_segments, playback_path)
         return playback_path
-    
+
     def encode_playback_with_buffering(self):
         source_path = join(self.run.downloads_dir, "playback.mp4")
         output_path = join(self.run.downloads_dir, "playback_buffering.mp4")
@@ -143,24 +172,24 @@ class Codec:
         parts = []
         for i in range(1, len(run_states)):
             if run_states[i]["state"] in ("State.BUFFERING", "State.END"):
-                parts.append(Ffmpeg.cut_video(source_path,run_states[i-1]["position"],run_states[i]["position"]))
+                parts.append(Ffmpeg.cut_video(source_path, run_states[i - 1]["position"], run_states[i]["position"]))
             else:
-                parts.append(Ffmpeg.generate_buffering_segment(frame_rate, run_states[i]["time"]-run_states[i-1]["time"]))
+                parts.append(Ffmpeg.generate_buffering_segment(frame_rate, run_states[i]["time"] - run_states[i - 1]["time"]))
         Ffmpeg.concat_segments(parts, output_path)
         return output_path
 
-    def calculate_vmaf_for_segment(self, quality: int, index: int) -> None:
-        output_file = join(self.run.vmaf_dir,
-                           f"vmaf-stream{quality}-{index:05d}.json")
+    def calculate_vmaf_for_segment(self, seg_path) -> None:
+        filename = basename(seg_path)
+        # index, quality = self.get_quality_and_index(seg_path)
+        output_file = join(self.run.vmaf_dir, f"{splitext(filename)[0]}.json")
         if exists(output_file):
             return
         else:
-            dis_file = self.get_encoded_segment(quality, index, extend=True)
-            ref_file = self.get_original_segment(quality, index)
+            dis_file = self.get_encoded_segment(seg_path, extend=True)
+            ref_file = self.get_original_segment(seg_path)
             with mutex_vmaf:
-                Path(CONFIG['cacheDir'], 'vmaf').mkdir(parents=True, exist_ok=True)
-                cache_file = join(CONFIG['cacheDir'], 'vmaf',
-                            f"vmaf-stream{quality}-{index:05d}-{md5(ref_file)}-{md5(dis_file)}.json")
+                Path(CONFIG["cacheDir"], "vmaf").mkdir(parents=True, exist_ok=True)
+                cache_file = join(CONFIG["cacheDir"], "vmaf", f"vmaf-{md5(ref_file)}-{md5(dis_file)}.json")
                 vmaf_json: Dict
                 if exists(cache_file):
                     with open(cache_file) as cf:
@@ -168,55 +197,50 @@ class Codec:
                 else:
                     docker_job: DockerJob = DockerJob(
                         config={
-                            'image': "jrottenberg/ffmpeg:4.4-ubuntu",
-                            'mounts': list(set([ref_file, dis_file, CONFIG["vmafDir"]])),
-                            'args': ["-i", ref_file, "-i", dis_file,
-                                    "-lavfi", f"""[0:v]setpts=PTS-STARTPTS[reference];
+                            "image": "jrottenberg/ffmpeg:4.4-ubuntu",
+                            "mounts": list(set([ref_file, dis_file, CONFIG["vmafDir"]])),
+                            "args": [
+                                "-i",
+                                ref_file,
+                                "-i",
+                                dis_file,
+                                "-lavfi",
+                                f"""[0:v]setpts=PTS-STARTPTS[reference];
                                         [1:v]setpts=PTS-STARTPTS[distorted];
                                         [distorted][reference]libvmaf=log_fmt=json:log_path=/dev/stdout:model_path={CONFIG['vmafDir']}/model/vmaf_v0.6.1.json:n_threads=8""",
-                                    "-f", "null", "-"]
+                                "-f",
+                                "null",
+                                "-",
+                            ],
                         }
                     )
                     docker_job.run()
                     vmaf_json = json.loads(docker_job.output)
-                    with open(cache_file, 'w') as f:
+                    with open(cache_file, "w") as f:
                         f.write(json.dumps(vmaf_json, indent=4))
-                with open(output_file, 'w') as f:
-                    f.write(json.dumps(vmaf_json, indent=4))                
+                with open(output_file, "w") as f:
+                    f.write(json.dumps(vmaf_json, indent=4))
 
-    def calculate_frames_for_segment(self, quality: int, index: int) -> None:
-        output_file = join(self.run.frames_dir,
-                           f"frames-stream{quality}-{index:05d}.json")
+    def calculate_frames_for_segment(self, seg_path) -> None:
+        output_file = join(self.run.frames_dir, f"{splitext(basename(seg_path))[0]}.json")
         if exists(output_file):
             return
         else:
-            dis_file = self.get_encoded_segment(quality, index)
+            dis_file = self.get_encoded_segment(seg_path)
             with mutex_frames:
-                Path(CONFIG['cacheDir'], 'frames').mkdir(parents=True, exist_ok=True)
-                cache_file = join(CONFIG['cacheDir'], 'frames',
-                            f"frames-stream{quality}-{index:05d}-{md5(dis_file)}.json")
-                frames_json: Dict
-                if exists(cache_file):
-                    with open(cache_file) as cf:
-                        frames_json = json.load(cf)
-                else:
-                    frames_json = json.loads(Ffmpeg.get_frames(dis_file))
-                    with open(cache_file, 'w') as f:
-                        f.write(json.dumps(frames_json, indent=4))
-                with open(output_file, 'w') as f:
+                frames_json = Ffmpeg.get_frames(dis_file)
+                with open(output_file, "w") as f:
                     f.write(json.dumps(frames_json, indent=4))
 
     def calcualte_vmaf_for_segments(self):
         print("Calculating VMAF")
-        segments = list(self.get_downloaded_segments())
-        for quality, index in segments:
-            self.calculate_vmaf_for_segment(quality, index)
+        for seg_path in self.get_downloaded_segments():
+            self.calculate_vmaf_for_segment(seg_path)
 
     def calculate_stalls_for_segments(self):
         print("Calculating micro stalls")
-        segments = list(self.get_downloaded_segments())
-        for quality, index in segments:
-            self.calculate_frames_for_segment(quality, index)
+        for seg_path in self.get_downloaded_segments():
+            self.calculate_frames_for_segment(seg_path)
         print("Micro Stalls calculated")
 
     @staticmethod
@@ -242,6 +266,6 @@ class Codec:
         compose = FfmpegCompose()
         for run_id in run_ids:
             run = get_run(run_id)
-            compose.add_video(join(run.downloads_dir, 'playback_buffering.mp4'))
+            compose.add_video(join(run.downloads_dir, "playback_buffering.mp4"))
         cmd = compose.build(output)
         subprocess.check_call(cmd, stdout=sys.stdout, stderr=sys.stderr)

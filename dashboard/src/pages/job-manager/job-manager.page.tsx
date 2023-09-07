@@ -1,5 +1,5 @@
 import "./style.scss";
-import { Button, Collapse, Layout, message, PageHeader, Typography } from "antd";
+import { Button, Collapse, Layout, message, Typography } from "antd";
 import { useState } from "react";
 import { Content } from "antd/lib/layout/layout";
 import { useStateSocket } from "../../common/api";

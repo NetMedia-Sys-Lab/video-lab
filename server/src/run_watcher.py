@@ -1,22 +1,24 @@
 import json
 import os
-from os.path import join
-from pprint import pprint
+from os.path import join, basename, exists, dirname
 from typing import Dict, Union
 
-from istream_player.modules.analyzer.exp_events import (ExpEvent_Progress,
-                                                     ExpEvent_State)
+from istream_player.modules.analyzer.exp_events import ExpEvent_Progress, ExpEvent_State
 from istream_player.modules.analyzer.exp_recorder import ExpReader
 from flask import Flask
-from watchdog.events import (DirCreatedEvent, FileCreatedEvent,
-                             FileSystemEventHandler)
+from watchdog.events import DirCreatedEvent, FileCreatedEvent, DirDeletedEvent, FileDeletedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from src.state_manager import StateManager
+from src.state_manager import REMOVE_VALUE, StateManager
 
 config_file = open("config.json")
 CONFIG = json.load(config_file)
 config_file.close()
+
+
+FILE_EVENT_LOGS = "event_logs.txt"
+FILE_CONFIG_JSON = "config.json"
+FILE_DATA_JSON = "data-1.json"
 
 
 class RunsWatcher(FileSystemEventHandler):
@@ -29,29 +31,48 @@ class RunsWatcher(FileSystemEventHandler):
         self.app = app
         self.state_manager = state_manager
         self.results_dir = CONFIG['headlessPlayer']['resultsDir']
-        self.watching_files = ["event_logs.txt"]
 
     def start_background(self):
         for path, subdirs, files in os.walk(self.results_dir):
             for name in files:
-                if name in self.watching_files:
-                    if os.path.exists(join(path, "data-1.json")):
-                        run_id = f"{path.rsplit('/', 2)[-2]}/{path.rsplit('/', 2)[-1]}"
+                if name == FILE_CONFIG_JSON:
+                    run_id = f"{path.rsplit('/', 2)[-2]}/{path.rsplit('/', 2)[-1]}"
+                    if exists(join(path, FILE_DATA_JSON)):
                         self.state_manager.state_updated_partial("run_states", f"{run_id}.state", 'State.END', False)
                         self.state_manager.state_updated_partial("run_states", f"{run_id}.progress", 1, False)
+                    elif exists(join(path, FILE_EVENT_LOGS)):
+                        self.tail_exp_logs(join(path, FILE_EVENT_LOGS), False)
                     else:
-                        self.tail_exp_logs(join(path, name), False)
+                        self.state_manager.state_updated_partial("run_states", f"{run_id}.state", 'State.SCHEDULED', False)
+                        self.state_manager.state_updated_partial("run_states", f"{run_id}.progress", 0, False)
+
         self.state_manager.broadcast_state('run_states')
         observer = Observer()
         observer.schedule(self, self.results_dir, recursive=True)
         observer.start()
 
     def on_created(self, event: Union[DirCreatedEvent, FileCreatedEvent]):
-        if event.src_path.rsplit("/", 1)[-1] in self.watching_files:
+        name = basename(event.src_path)
+        path = dirname(event.src_path)
+        
+        if name == FILE_EVENT_LOGS:
             self.tail_exp_logs(event.src_path, True)
+        elif name == FILE_CONFIG_JSON and not exists(join(path, FILE_EVENT_LOGS)):
+            run_id = f"{path.rsplit('/', 2)[-2]}/{path.rsplit('/', 2)[-1]}"
+            self.state_manager.state_updated_partial("run_states", f"{run_id}.state", 'State.SCHEDULED', True)
+            self.state_manager.state_updated_partial("run_states", f"{run_id}.progress", 0, True)
+    
+    def on_deleted(self, event: Union[DirDeletedEvent, FileDeletedEvent]):
+        name = basename(event.src_path)
+        path = dirname(event.src_path)
+
+        if name == FILE_CONFIG_JSON:
+            run_id = f"{path.rsplit('/', 2)[-2]}/{path.rsplit('/', 2)[-1]}"
+            self.state_manager.state_updated_partial("run_states", f"{run_id}", REMOVE_VALUE, True)
 
     def on_modified(self, event):
-        if event.src_path.rsplit("/", 1)[-1] in self.watching_files:
+        name = basename(event.src_path)
+        if name == FILE_EVENT_LOGS:
             self.tail_exp_logs(event.src_path, True)
 
     def tail_exp_logs(self, file_path, broadcast=False):
@@ -65,3 +86,5 @@ class RunsWatcher(FileSystemEventHandler):
                 run_id = f"{file_path.split('/')[-3]}/{file_path.split('/')[-2]}"
                 self.state_manager.state_updated_partial("run_states", f"{run_id}.progress", event.progress, broadcast)
                 self.state_manager.state_updated_partial("run_states", f"{run_id}.state", event.new_state, broadcast)
+
+            
