@@ -370,7 +370,7 @@ export const RunTimelinePlotComponent = (props: {
                 plotError && <Alert type="error" message={plotError} banner />
             }
             <D3PlotComponent plots={plots}
-                margin={{ top: 20, right: 20, bottom: 60, left: 60 }}
+                margin={{ top: 20, right: 70, bottom: 60, left: 60 }}
                 onMarkerUpdate={onMarkerUpdate} onLogsClick={(range) => {
                     window.open(makeKibanaLink({
                         runIds: plotData.map(runData => runData.run_id),

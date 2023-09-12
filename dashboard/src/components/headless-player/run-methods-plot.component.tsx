@@ -48,10 +48,10 @@ type YAxisOptions = "name" | "video" | "bufferSelection" | "segLength" | "method
 type DataRow = Record<GroupOptions | XAxisOptions | YAxisOptions, string | number>;
 
 export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] }) => {
-    const [plotType, setPlotType] = useState<"line" | "bar">("line");
-    const [xAxis, setXAxis] = useSavedState('METHOD_PLOT_XAXIS', "video");
-    const [group, setGroup] = useSavedState('METHOD_PLOT_GROUP', 'method');
-    const [yAxis, setYAxis] = useSavedState('METHOD_PLOT_YAXIS', 'durStall')
+    const [plotType, setPlotType] = useSavedState<"line" | "bar">('METHOD_PLOT_TYPE', "line");
+    const [xAxis, setXAxis] = useSavedState<keyof DataRow>('METHOD_PLOT_XAXIS', "video");
+    const [group, setGroup] = useSavedState<keyof DataRow>('METHOD_PLOT_GROUP', 'method');
+    const [yAxis, setYAxis] = useSavedState<keyof DataRow>('METHOD_PLOT_YAXIS', 'durStall')
     const [plots, setPlots] = useState<D3PlotBase<any>[]>([])
     const [selectedData, setSelectedData] = useState({});
 
@@ -86,7 +86,8 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 segLength: r.segments[0].duration || 1,
                 method,
                 numBuffStall: r.num_stall,
-                durBuffStall: r.dur_stall * 1000,
+                durBuffStall: Math.round(r.dur_stall * 1000)/1000,
+                
                 vmaf: r.vmaf.mean,
                 vmafLoss: (100 - r.vmaf.mean),
                 // durMicroStall: r.micro_stalls.total_stall_duration * 1000,
@@ -115,45 +116,13 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         if (!df) return
 
         const plots: D3PlotBase<any>[] = []
-
-        // if (xAxis === null) {
-        //     df.col(yAxis as any).plotBar(plots, { yLabel: yAxis });
-        // } else {
-        // if (yAxis === "durStall") {
-        // const dfGroup = df.groupBy(r => r.method).mapGroups(
-        //     (method, df1) => {
-        //         return df1.groupBy(r => r[indexField]!)
-        //             .reduce((groupByValue, df2) => ({
-        //                 method: method,
-        //                 [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-        //                 "durStall": df2.avgField(r => r.durStall! / 1000),
-        //                 "durLongStall": df2.avgField(r => r.durLongStall! / 1000),
-        //                 "durBuffStall": df2.avgField(r => r.durBuffStall! / 1000),
-        //             }), indexField)
-        //     }
-        // )
-        // dfGroup.col("durStall").plotBar(plots, {
-        //     xLabel: xAxis, yLabel: "Stall in sec", opacity: 0.3,
-        //     legendLabels: { 'tasq': 'TASQ Stutter', 'beta': 'BETA Stutter', 'dash': 'DASH Stutter' },
-        //     onSelect: (idx, data) => setSelectedData(data)
-        // })
-        // dfGroup.col("durLongStall").plotBar(plots, {
-        //     opacity: 0.5,
-        //     onSelect: (idx, data) => setSelectedData(data)
-        //     // legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } 
-        // })
-        // dfGroup.col("durBuffStall").plotBar(plots, {
-        //     onSelect: (idx, data) => setSelectedData(data)
-        //     // legendLabels: { 'tasq': 'TASQ Buffering', 'beta': 'BETA Buffering', 'dash': 'DASH Buffering' } 
-        // })
-        // } else {
-        const dfGroup = df.groupBy(r => r[group as keyof DataRow]).mapGroups(
+        const dfGroup = df.groupBy(r => r[group]).mapGroups(
             (groupId, df1) => {
-                const ret = df1.groupBy(r => r[xAxis as keyof DataRow]!)
+                const ret = df1.groupBy(r => r[xAxis]!)
                     .reduce((groupByValue, df2) => ({
                         [group]: groupId,
                         [xAxis]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-                        [yAxis]: df2.avgField(r => r[yAxis as keyof DataRow]!),
+                        [yAxis]: df2.avgField(r => r[yAxis]!),
                         "durBuffStall": df2.avgField(r => r.durBuffStall!),
                     }), xAxis);
                 ret.sortNumerical(xAxis);
@@ -174,15 +143,13 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 text: '+'
             })
         }
-        // }
-        // }
 
         setPlots(plots)
     }, [yAxis, xAxis, df, plotType, group])
 
     function downloadJson() {
         const columns = ["durBuffStall", "durMicroStall", "durStall", "durStallPerc", "numBuffStall", "numSwitches", "vmaf", "vmafLoss", "quality", "quality_std", "bitrate", "bitrate_std"];
-        const result = df!.groupBy(r => r[xAxis as keyof DataRow]!)
+        const result = df!.groupBy(r => r[xAxis]!)
             .reduce((groupByValue, df2) => columns.reduce((o, key) => Object.assign(o, {
                 [key]: df2.avgField(r => r[key as keyof DataRow]!),
             }), {

@@ -8,7 +8,6 @@ simple-websocket
 
 typing-extensions
 jsonpath-ng
-experiments-common
 watchdog
 ffmpeg-python
 fs
