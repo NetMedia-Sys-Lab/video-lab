@@ -55,7 +55,7 @@ export const DatasetPageComponent = (props: {}) => {
         <Modal
             title="Encode HEVC"
             centered
-            visible={showEncodeForm}
+            open={showEncodeForm}
             onOk={() => {
                 encodeHevcVideos(checkedKeys as string[], encodeProps.bitrates.split(",").map(parseFloat), encodeProps.resolutions.split(','), encodeProps.segLength)
             }}
@@ -104,7 +104,7 @@ export const DatasetPageComponent = (props: {}) => {
         <Modal
             title="Create DASH"
             centered
-            visible={showDashForm}
+            open={showDashForm}
             onOk={() => {
                 createDashPlaylist(checkedKeys as string[], dashProps.segLength)
             }}
@@ -136,5 +136,5 @@ export const DatasetPage: PageType = {
         label: 'Dataset',
         icon: <DatabaseOutlined />
     },
-    component: <DatasetPageComponent />
+    component: DatasetPageComponent
 }

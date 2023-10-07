@@ -140,7 +140,7 @@ def merge_mpd(path, merged_path):
     print(xmlstr)
     with open(join(merged_path), 'w') as f:
         f.write(xmlstr)
-        
+
 
 @register_python_job()
 def replace_beta_parameters(dataset_path):

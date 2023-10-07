@@ -57,7 +57,7 @@ export const HeadlessPlayerSingleComponent = () => {
             <Modal
                 title="Quality"
                 centered
-                visible={qualityData}
+                open={qualityData}
                 onOk={() => setQualityData(undefined)}
                 onCancel={() => setQualityData(undefined)}
                 width={1000}
@@ -71,7 +71,7 @@ export const HeadlessPlayerSingleComponent = () => {
 export const HeadlessPlayerSinglePage: PageType = {
     routerPath: '/headless-player/single',
     title: 'Single Run',
-    component: <HeadlessPlayerSingleComponent />
+    component: HeadlessPlayerSingleComponent
 }
 export const makeHeadlessPlayerSinglePath =
     (runId: string) => `/headless-player/single?run=${euc(runId)}`

@@ -74,10 +74,11 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
             const totalDuration = r.segments.map(seg => seg.duration).reduce((prevSum, d) => prevSum + d, 0);
             const name = r.run_config.run_id.replace("/", "_").split("_").slice(cpi, csi).join("_");
             const video = r.run_config.input.startsWith("https://server:443/") ? r.run_config.input.slice(19) : r.run_config.input;
+            
             let crfMatches = /crf(\d+)/g.exec(r.run_config.run_id);
-            let segDurMatches = /\/[a-z]+(\d+)s/g.exec(r.run_config.input);
-            let videoNameMatches = /\/([a-z]+)\d+s/g.exec(r.run_config.input);
-            let segmentTypeMatches = /\/[a-z]+\d+s_\d+s_((?:i|s)+)_/g.exec(r.run_config.input);
+            let segDurMatches = /\/[a-z]+(\d+)ms/g.exec(r.run_config.input);
+            let videoNameMatches = /\/([a-z]+)\d+ms/g.exec(r.run_config.input);
+            let segmentTypeMatches = /\/[a-z]+\d+ms_\d+s_((?:i|s)+)_/g.exec(r.run_config.input);
             return {
                 name,
                 resultId: r.run_config.run_id.split('/', 1)[0],
@@ -88,8 +89,9 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 numBuffStall: r.num_stall,
                 durBuffStall: Math.round(r.dur_stall * 1000)/1000,
                 
-                vmaf: r.vmaf.mean,
-                vmafLoss: (100 - r.vmaf.mean),
+                vmaf: r.vmaf?.pooled_metrics.vmaf.mean,
+                vmafMin: r.vmaf?.pooled_metrics.vmaf.min,
+                // vmafLoss: (100 - (r.vmaf?.pooled_metrics.vmaf || 100) as any),
                 // durMicroStall: r.micro_stalls.total_stall_duration * 1000,
                 // durUnnoticeable: (r.micro_stalls.total_stall_duration - r.micro_stalls.long_stall_duration) * 1000,
                 numSwitches: r.num_quality_switches,
@@ -193,6 +195,7 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         &nbsp;&nbsp; X Axis &nbsp;&nbsp;&nbsp;
         <Select style={{ width: 200 }} placeholder="X Axis" value={xAxis} onChange={setXAxis}>
             {/* <Select.Option value={null}>None</Select.Option> */}
+            <Select.Option value={"method"}>Method</Select.Option>
             <Select.Option value={"resultId"}>Result ID</Select.Option>
             <Select.Option value={"video"}>Video</Select.Option>
             <Select.Option value={"bufferSelection"}>Buffer Selection</Select.Option>
@@ -214,10 +217,13 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 <Select.Option value="durStallPerc">Duration of All Stalls (%)</Select.Option>
                 <Select.Option value="numBuffStall">Number of Buffering Stalls</Select.Option>
                 <Select.Option value="numSwitches">Number of Switches</Select.Option>
-                <Select.Option value="vmaf">VMAF (%)</Select.Option>
-                <Select.Option value="vmafLoss">VMAF Loss (%)</Select.Option>
+                <Select.Option value="vmaf">VMAF</Select.Option>
+                <Select.Option value="vmafMin">VMAF Min</Select.Option>
+                <Select.Option value="vmafLoss">VMAF Loss</Select.Option>
                 <Select.Option value="quality">Quality Level</Select.Option>
+                <Select.Option value="quality_std">Quality Level Std. Dev.</Select.Option>
                 <Select.Option value="bitrate">Bitrate</Select.Option>
+                <Select.Option value="bitrate_std">Bitrate Std. Dev.</Select.Option>
             </Select>
             <Button onClick={downloadJson}>Download JSON</Button>
         </Space>

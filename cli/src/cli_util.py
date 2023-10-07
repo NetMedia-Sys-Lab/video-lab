@@ -21,9 +21,6 @@ def print_responsive_table(rows: List[List], *, max_table_width: Optional[int], 
     ]
 
     for col in range(num_cols):
-        if col_widths[col] is None:
-            col_widths[col] = max(len(row[col]) for row in rows)
-        elif col_widths[col] is 
 
     table_width = sum(col_widths) + 2*num_cols + num_cols + 1
     if table_width > max_table_width:

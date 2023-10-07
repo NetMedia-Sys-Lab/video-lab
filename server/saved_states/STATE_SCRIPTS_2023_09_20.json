@@ -1,0 +1,31 @@
+{
+    "key": "SCRIPTS",
+    "value": {
+        "encode_av1": {
+            "id": "encode_av1",
+            "name": "Encode_AV1",
+            "path": "/home/akram/ucalgary/research/istream-player/dataset/videos-raw/run.sh"
+        },
+        "encode_av1_py": {
+            "id": "encode_av1_py",
+            "name": "Encode AV Python",
+            "path": "/home/akram/ucalgary/research/istream-player/dataset/videos-raw/encode.py"
+        },
+        "test": {
+            "id": "test",
+            "name": "Test",
+            "path": "/home/akram/ucalgary/research/istream-player/dataset/videos-raw/test.sh"
+        },
+        "test Py": {
+            "id": "test Py",
+            "name": "Test Python",
+            "path": "/home/akram/ucalgary/research/istream-player/dataset/videos-raw/test.py"
+        },
+        "extend_mpd": {
+            "id": "extend_mpd",
+            "name": "Extend MPD",
+            "path": "/home/akram/ucalgary/research/istream-player/dataset/videos-raw/extend_mpd.py"
+        }
+    },
+    "id": 1695097953626
+}

@@ -82,7 +82,7 @@ export const VideoInspectorPage: PageType = {
         label: 'Video Inspector',
         icon: <FileSearchOutlined />
     },
-    component: <VideoInspectorPageComponent />
+    component: VideoInspectorPageComponent
 }
 
 export const makeVideoInspectorPath =

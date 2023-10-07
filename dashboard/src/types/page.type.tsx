@@ -7,5 +7,5 @@ export type PageType = {
         label: ReactNode,
         icon: ReactNode
     },
-    component: ReactNode
+    component: (props: {}) => JSX.Element
 }

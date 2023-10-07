@@ -1,24 +1,19 @@
-import asyncio
-import base64
 from functools import cache
 import hashlib
 import json
 import os
-from pprint import pprint
 import re
 from threading import Lock
 import subprocess
 import sys
 import time
-from os.path import join, exists, basename, normpath, splitext
+from os.path import join, exists, basename, splitext
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Tuple, TypeVar
+from typing import List, Optional, Set, Tuple, TypeVar
+from urllib.parse import urlparse
 
-from fs.tempfs import TempFS
-from src.job_framework.server.job_manager_server import JobManagerServer
 from src.job_framework.jobs.job_python import register_python_job
 
-from src.job_framework.jobs.job_docker import DockerJob
 from src.beta.run import Run, get_run
 from src.util.ffmpeg import Ffmpeg
 from src.util.ffmpeg_compose import FfmpegCompose
@@ -150,13 +145,32 @@ class Codec:
         return enc_path
 
     def encode_playback(self) -> str:
-        playback_path = join(self.run.downloads_dir, "playback.mp4")
-        if exists(playback_path):
-            return playback_path
-        enc_segments = []
-        for seg_path in self.get_downloaded_segments():
-            enc_segments.append(self.get_encoded_segment(seg_path, overlay=True, extend=True))
-        Ffmpeg.concat_segments(enc_segments, playback_path)
+        playback_path = join(self.run.run_dir, "playback.mp4")
+
+        proc = subprocess.Popen(
+            f"ffmpeg -i - -err_detect ignore_err -c copy -y {playback_path}",
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+        assert proc.stdin is not None
+
+        init_paths: Set[str] = set()
+
+        for seg in self.run.details()["segments"]:
+            init_path = join(self.run.downloads_dir, basename(urlparse(seg["init_url"]).path))
+            seg_path = join(self.run.downloads_dir, basename(urlparse(seg["url"]).path))
+            if init_path not in init_paths:
+                init_paths.add(init_path)
+                sys.stdout.write(f"Writing to ffmpeg process: {init_path}\n")
+                proc.stdin.write(read_bytes(init_path))
+            sys.stdout.write(f"Writing to ffmpeg process: {seg_path}\n")
+            proc.stdin.write(read_bytes(seg_path))
+
+        proc.communicate()
+        assert proc.returncode == 0, f"FFmpeg returned with non-zero code {proc.returncode}"
+
         return playback_path
 
     def encode_playback_with_buffering(self):
@@ -168,7 +182,7 @@ class Codec:
 
         frame_rate = Ffmpeg.get_frame_rate(source_path)
 
-        run_states = self.run.details["states"]
+        run_states = self.run.details()["states"]
         parts = []
         for i in range(1, len(run_states)):
             if run_states[i]["state"] in ("State.BUFFERING", "State.END"):
@@ -178,78 +192,51 @@ class Codec:
         Ffmpeg.concat_segments(parts, output_path)
         return output_path
 
-    def calculate_vmaf_for_segment(self, seg_path) -> None:
-        filename = basename(seg_path)
-        # index, quality = self.get_quality_and_index(seg_path)
-        output_file = join(self.run.vmaf_dir, f"{splitext(filename)[0]}.json")
-        if exists(output_file):
+    def calculate_vmaf(self):
+        raw_video_path, fps = self.run.raw_video_path()
+        num_frames: int = int(self.run.total_duration() * fps)
+
+        vmaf_path = join(self.run.run_dir, "vmaf.json")
+        if os.path.exists(vmaf_path):
             return
-        else:
-            dis_file = self.get_encoded_segment(seg_path, extend=True)
-            ref_file = self.get_original_segment(seg_path)
-            with mutex_vmaf:
-                Path(CONFIG["cacheDir"], "vmaf").mkdir(parents=True, exist_ok=True)
-                cache_file = join(CONFIG["cacheDir"], "vmaf", f"vmaf-{md5(ref_file)}-{md5(dis_file)}.json")
-                vmaf_json: Dict
-                if exists(cache_file):
-                    with open(cache_file) as cf:
-                        vmaf_json = json.load(cf)
-                else:
-                    docker_job: DockerJob = DockerJob(
-                        config={
-                            "image": "jrottenberg/ffmpeg:4.4-ubuntu",
-                            "mounts": list(set([ref_file, dis_file, CONFIG["vmafDir"]])),
-                            "args": [
-                                "-i",
-                                ref_file,
-                                "-i",
-                                dis_file,
-                                "-lavfi",
-                                f"""[0:v]setpts=PTS-STARTPTS[reference];
-                                        [1:v]setpts=PTS-STARTPTS[distorted];
-                                        [distorted][reference]libvmaf=log_fmt=json:log_path=/dev/stdout:model_path={CONFIG['vmafDir']}/model/vmaf_v0.6.1.json:n_threads=8""",
-                                "-f",
-                                "null",
-                                "-",
-                            ],
-                        }
-                    )
-                    docker_job.run()
-                    vmaf_json = json.loads(docker_job.output)
-                    with open(cache_file, "w") as f:
-                        f.write(json.dumps(vmaf_json, indent=4))
-                with open(output_file, "w") as f:
-                    f.write(json.dumps(vmaf_json, indent=4))
 
-    def calculate_frames_for_segment(self, seg_path) -> None:
-        output_file = join(self.run.frames_dir, f"{splitext(basename(seg_path))[0]}.json")
-        if exists(output_file):
-            return
-        else:
-            dis_file = self.get_encoded_segment(seg_path)
-            with mutex_frames:
-                frames_json = Ffmpeg.get_frames(dis_file)
-                with open(output_file, "w") as f:
-                    f.write(json.dumps(frames_json, indent=4))
+        print(f"JOB_MAX_PROGRESS = {num_frames}")
 
-    def calcualte_vmaf_for_segments(self):
-        print("Calculating VMAF")
-        for seg_path in self.get_downloaded_segments():
-            self.calculate_vmaf_for_segment(seg_path)
+        proc = subprocess.Popen(
+            f'ffmpeg -i - -i "{raw_video_path}" -frames {num_frames} \
+                -err_detect ignore_err \
+                -lavfi "[0][1]libvmaf=log_path={vmaf_path}:log_fmt=json:ssim=1:psnr=1:n_threads=3:n_subsample=3" -f null -',
+            shell=True,
+            stdin=subprocess.PIPE,
+            stderr=sys.stderr,
+            stdout=sys.stdout,
+        )
+        assert proc.stdin is not None
 
-    def calculate_stalls_for_segments(self):
-        print("Calculating micro stalls")
-        for seg_path in self.get_downloaded_segments():
-            self.calculate_frames_for_segment(seg_path)
-        print("Micro Stalls calculated")
+        init_paths: Set[str] = set()
+
+        for seg in self.run.details()["segments"]:
+            init_path = join(self.run.downloads_dir, basename(urlparse(seg["init_url"]).path))
+            seg_path = join(self.run.downloads_dir, basename(urlparse(seg["url"]).path))
+            if init_path not in init_paths:
+                init_paths.add(init_path)
+                sys.stdout.write(f"Writing to ffmpeg process: {init_path}\n")
+                proc.stdin.write(read_bytes(init_path))
+
+            sys.stdout.write(f"Writing to ffmpeg process: {seg_path}\n")
+            seg_bytes = read_bytes(seg_path)
+            seg_bytes += b"\0" * (seg["total_bytes"] - len(seg_bytes))
+            proc.stdin.write(seg_bytes)
+
+        proc.communicate()
+        assert proc.returncode == 0, f"FFmpeg returned with non-zero code {proc.returncode}"
 
     @staticmethod
     @register_python_job()
     def calculate_quality(run_id: str):
         run = get_run(run_id)
         codec = Codec(run)
-        codec.calcualte_vmaf_for_segments()
-        codec.calculate_stalls_for_segments()
+        codec.calculate_vmaf()
 
     @staticmethod
     @register_python_job()
@@ -257,7 +244,7 @@ class Codec:
         run = get_run(run_id)
         codec = Codec(run)
         codec.encode_playback()
-        codec.encode_playback_with_buffering()
+        # codec.encode_playback_with_buffering()
 
     @staticmethod
     @register_python_job()

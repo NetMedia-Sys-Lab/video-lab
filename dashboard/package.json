@@ -13,6 +13,7 @@
     "@types/node": "^16.11.45",
     "@types/react": "^18.0.15",
     "@types/react-dom": "^18.0.6",
+    "ansi-to-react": "^6.1.6",
     "antd": "^5.8.6",
     "d3": "^5.0.0",
     "js-yaml": "^4.1.0",
@@ -34,6 +35,9 @@
     "@types/sass": "^1.43.1",
     "@types/sass-loader": "^8.0.3",
     "@types/webpack": "^5.28.0",
+    "eslint": "^8.49.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-unused-imports": "^3.0.0",
     "sass": "^1.54.5",
     "sass-loader": "^13.0.2",
     "webpack": "^5.74.0"
@@ -45,9 +49,9 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
+    "extends": [],
+    "plugins": [
+      "react-hooks"
     ]
   },
   "browserslist": {
@@ -61,5 +65,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
   }
 }

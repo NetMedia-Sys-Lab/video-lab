@@ -6,7 +6,6 @@ import shutil
 import subprocess
 import sys
 from os.path import join
-from pprint import pprint
 from random import shuffle
 from subprocess import check_call, check_output
 from time import sleep, time
@@ -27,26 +26,6 @@ for i in range(1, 255):
     network_ids.put(i)
 
 
-# class RunConfig(TypedDict):
-#     resultId: str
-#     runId: str
-#     runDir: str
-#     video: str
-#     beta: bool
-#     codec: str
-#     protocol: str
-#     length: int
-#     bufferSetting: str
-#     bwProfile: str
-#     abr: str
-#     attempt: int
-#     target: str
-#     env: str
-#     serverImage: str
-#     serverLogLevel: str
-#     calcaulateVmaf: bool
-
-
 @register_python_job()
 def docker_compose_up(run_config: dict):
     network_id = network_ids.get()
@@ -59,9 +38,10 @@ def docker_compose_up(run_config: dict):
         "DATASET_DIR": CONFIG["dataset"]["datasetDir"],
         "MY_UID": str(os.getuid()),
         "MY_GID": str(os.getgid()),
+        "COMPOSE_STATUS_STDOUT": "1"
     }
     print(json.dumps(env, indent=4))
-    project_name = f"istream_player_{round(time() * 1000)}"
+    project_name = f"{round(time() * 10000)}"
     try:
         proc = subprocess.Popen(
             f"docker compose -f {CONFIG['headlessPlayer']['dockerCompose']} -p {project_name} up --abort-on-container-exit",
@@ -113,59 +93,9 @@ class ExperimentRunner:
             finally:
                 pass
 
-    # def to_list_of_runs(self, runs_config: RunsConfig) -> List[RunConfig]:
-    #     configs: Any = [{}]
-
-    #     def multiply(run_configs, values: Iterable, prop):
-    #         return [{**rc, prop: val} for val in values for rc in run_configs]
-
-    #     configs = multiply(configs, runs_config['protocols'], 'protocol')
-    #     configs = multiply(
-    #         configs, runs_config['bufferSettings'], 'bufferSetting')
-    #     configs = multiply(configs, runs_config['bwProfiles'], 'bwProfile')
-    #     configs = multiply(configs, runs_config['abr'], 'abr')
-    #     configs = multiply(configs, runs_config['codecs'], 'codec')
-    #     configs = multiply(configs, runs_config['lengths'], 'length')
-    #     configs = multiply(configs, runs_config['beta'], 'beta')
-    #     configs = multiply(configs, runs_config['videos'], 'video')
-    #     configs = multiply(configs, range(1, runs_config['repeat'] + 1), 'attempt')
-    #     configs = multiply(configs, [runs_config['resultId']], 'resultId')
-    #     configs = multiply(configs, [runs_config['serverLogLevel']], 'serverLogLevel')
-    #     configs = multiply(configs, [runs_config['calculateVmaf']], 'calculateVmaf')
-    #     configs = multiply(configs, runs_config.get('serverImages', ['server_aioquic:latest']), 'serverImage')
-
-    #     for prop, vals in runs_config.get('extra', {}).items():
-    #         configs = multiply(configs, vals, prop)
-
-    #     configs = list(
-    #         filter(lambda c: c['beta'] or c['protocol'] != "quic", configs))
-
-    #     for config in configs:
-    #         config['length'] = int(config['length'])
-    #         config['runId'], config['runDir'] = self.make_run_id(
-    #             f"{CONFIG['headlessPlayer']['resultsDir']}/{config['resultId']}"
-    #             f"/run_{config['bwProfile']}_{config['bufferSetting']}_{config['abr']}_{config['codec']}_{config['video']}_{config['length']}sec_"
-    #             f"{'beta' if config['beta'] else 'nonbeta'}_{config['protocol']}"
-    #         )
-    #         config['runId'] = config['resultId'] + "/" + config['runId']
-    #         url = f"https://server:443/videos/{config['codec']}"
-    #         url += f"-{config['length']}sec"
-    #         url += f"/{config['video']}/output-beta.mpd"
-    #         config['target'] = url
-
-    #         config['bwProfile'] = {
-    #             'drop': '/run/bw_always_400.txt',
-    #             'drop-low': '/run/bw_always_low.txt'
-    #         }.get(config['bwProfile'], '/run/bw_multi-drop.txt')
-
-    #         config['env'] = f"/run/application-{config['bufferSetting']}-{config['protocol']}.yaml"
-
-    #     return configs
-
     def schedule_runs(self, configs: List[Dict]):
         self.log.info(f"Total runs = {len(configs)}")
         shuffle(configs)
-        pprint(configs)
 
         subprocess.call("docker container prune -f", shell=True)
         subprocess.call("docker network prune -f", shell=True)

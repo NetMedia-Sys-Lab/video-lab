@@ -1,11 +1,8 @@
 import asyncio
-from abc import ABC, abstractmethod
 from enum import Enum
 from functools import cached_property
 import json
-from pprint import pprint
-import traceback
-from typing import Any, Dict, List, Optional, Type, TypedDict, Union
+from typing import Dict, Optional
 from os.path import join
 
 config_file = open("config.json")
@@ -20,25 +17,26 @@ class JobStatus:
     SUCCESSFUL = "SUCCESSFUL"
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
-    
+
 
 class JobBase:
     __done__: asyncio.Event
 
-    type: str = None
-    job_id: str = None
-    status: str = None
-    error: str = None
-    output: str = None
-    finished_at: float = None
-    scheduled_at: float = None
-    run_at: float = None
-    config: Dict = None
+    job_id: str
+    status: str = JobStatus.SCHEDULED
+    type: Optional[str] = None
+    error: Optional[str] = None
+    output: Optional[str] = None
+    finished_at: Optional[float] = None
+    scheduled_at: Optional[float] = None
+    run_at: Optional[float] = None
+    config: Optional[Dict] = None
+    progress: Optional[float] = None
 
     def __init__(self, *args, **config):
         self.type = self.__class__.type
-        for k,v in config.items():
-            self.__setattr__(k,v)
+        for k, v in config.items():
+            self.__setattr__(k, v)
         self.__done__ = asyncio.Event()
 
     def run(self):
@@ -63,8 +61,8 @@ class JobBase:
     def try_read(self, file_path):
         try:
             print(f"Trying to read : {file_path}")
-            with open(file_path, 'rb') as f:
-                return f.read().decode('ascii')
+            with open(file_path, "rb") as f:
+                return f.read().decode("utf-8")
         except Exception as e:
             return f"Failed to read {file_path}: {e}"
 
@@ -94,31 +92,36 @@ class JobBase:
             "status": str(self.status),
             "scheduled_at": self.scheduled_at,
             "run_at": self.run_at,
-            "finished_at": self.finished_at
+            "finished_at": self.finished_at,
+            "progress": self.progress,
         }
 
     def details(self):
+        output = self.try_read(self.stdouterr_path)
+
         return {
             **self.details_short(),
             "error": self.error,
-            "stdouterr": self.try_read(self.stdouterr_path),
-            'config': self.config,
-            'output': self.output
+            "progress": self.progress,
+            "stdouterr": output,
+            "config": self.config,
+            "output": self.output,
         }
-    
+
     def serialize(self):
         def is_internal(s: str):
-            return s.startswith('__') and s.endswith('__')
-        ret = {k:v for k,v in self.__dict__.items() if not is_internal(k)}
+            return s.startswith("__") and s.endswith("__")
+
+        ret = {k: v for k, v in self.__dict__.items() if not is_internal(k)}
         # print(ret.keys())
         if self.__done__.is_set():
-            ret['done'] = True
+            ret["done"] = True
         return ret
-    
+
     def deserialize(self, job_dict: Dict, loop: asyncio.AbstractEventLoop = None):
         # pprint(job_dict)
-        for k,v in job_dict.items():
-            self.__setattr__(k,v)
-        if job_dict.get('done'):
+        for k, v in job_dict.items():
+            self.__setattr__(k, v)
+        if job_dict.get("done"):
             if loop:
                 loop.call_soon_threadsafe(self.__done__.set)

@@ -32,7 +32,7 @@ export const HeadlessPlayerCompareComponent = () => {
 export const HeadlessPlayerComparePage: PageType = {
     routerPath: '/headless-player/compare',
     title: 'Compare Runs',
-    component: <HeadlessPlayerCompareComponent />
+    component: HeadlessPlayerCompareComponent
 }
 export const makeHeadlessPlayerComparePath =
     (runIds: string[]) => `/headless-player/compare?runs=${euc(runIds.join(','))}`

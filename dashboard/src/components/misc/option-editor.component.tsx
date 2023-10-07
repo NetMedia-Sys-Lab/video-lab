@@ -20,7 +20,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
 }) => {
 
     const [open, setOpen] = useState(false);
-    const [activeIndex, setActiveIndex] = useState<number | null>();
+    const [activeIndex, setActiveIndex] = useState<number>();
     const [error, setError] = useState<string | null>();
     const [editorType, setEditorType] = useState<string>('json');
 
@@ -47,7 +47,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
         const newSelectedNames = newOptions.filter(opt => selectedNames.indexOf(opt.name) >= 0).map(opt => opt.name);
         onChange(newOptions, newSelectedNames);
         if (activeIndex === idx) {
-            setActiveIndex(null);
+            setActiveIndex(undefined);
         }
     }
 
@@ -77,8 +77,10 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
             return setError("Name should be of type string");
         }
 
-        if (activeIndex === null) {
+        if (activeIndex === undefined) {
             return setError("No option selected to save");
+        } else if (activeIndex >= options.length) {
+            return setError("Bad active index");
         }
 
         if (JSON.stringify(options[activeIndex!]) !== JSON.stringify(obj)) {
@@ -135,7 +137,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
     }
 
     useEffect(() => {
-        if (editorRef.current && activeIndex) {
+        if (editorRef.current && activeIndex !== undefined && activeIndex < options.length) {
 
             let newValue = "";
             // @ts-ignore
@@ -143,10 +145,14 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
 
             if (editorType === "json") {
                 newValue = JSON.stringify(options[activeIndex], null, 4);
-                oldValue = JSON.stringify(JSON.parse(oldValue), null, 4);
+                try {
+                    oldValue = JSON.stringify(JSON.parse(oldValue), null, 4);
+                } catch (err) { }
             } else if (editorType === "yaml") {
                 newValue = yaml.dump(options[activeIndex]);
-                oldValue = yaml.dump(yaml.load(oldValue));
+                try {
+                    oldValue = yaml.dump(yaml.load(oldValue));
+                } catch (err) {}
             }
 
             // @ts-ignore
@@ -175,7 +181,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
                         // @ts-ignore
                         saveValue(editorRef.current.getValue());
                     }
-                }} disabled={activeIndex === null}>Save</Button>
+                }} disabled={activeIndex === undefined}>Save</Button>
             ]}
         >
             <Row style={{ height: "100%" }}>
@@ -233,7 +239,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
                                 onClick={() => {
                                     let val = { name: "NEW_OPTION", value: {} };
                                     onChange([...options, val], selectedNames);
-                                    setActiveIndex(options.length);
+                                    setActiveIndex(options.length - 1);
                                 }}
                                 icon={<PlusOutlined />}
                             />
@@ -241,7 +247,11 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
                     </div>
                     {searchBarOpen &&
                         <div className="options-toolbar">
-                            <Input placeholder="Filter" prefix={<FilterOutlined />} value={searchString} onChange={ev => setSearchString(ev.target.value)} />
+                            <Input.Search
+                                placeholder="Filter"
+                                prefix={<FilterOutlined />}
+                                onSearch={(value: string) => setSearchString(value)}
+                            />
                         </div>
                     }
                     <div className="options-table">
@@ -276,7 +286,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
                 </Col>
                 <Col span={16} className="editor-col">
 
-                    {activeIndex !== null && activeIndex !== undefined ? <>
+                    {activeIndex !== undefined ? <>
                         <Radio.Group onChange={ev => changeEditorType(ev.target.value)} value={editorType} style={{ marginBottom: 8 }}>
                             <Radio.Button value="json">JSON</Radio.Button>
                             <Radio.Button value="yaml">YAML</Radio.Button>
@@ -292,7 +302,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
                             onChange={saveValue}
                         />;
                     </>
-                        : <div style={{padding: 10}}><Skeleton /></div>}
+                        : <div style={{ padding: 10 }}><Skeleton /></div>}
                 </Col>
             </Row>
         </Modal>

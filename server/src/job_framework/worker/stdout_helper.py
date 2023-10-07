@@ -1,9 +1,9 @@
-from io import StringIO, TextIOBase
+from io import BufferedWriter
 import os
 import threading
 import sys
 import traceback
-from typing import Tuple
+from typing import Callable, Optional, Tuple
 from werkzeug import local
 
 # Save all of the objects for use later.
@@ -16,16 +16,31 @@ orig_stderr = sys.stderr
 thread_proxies_stdout = {}
 thread_proxies_stderr = {}
 
+
+class ANSI:
+    RESET = "\u001b[0m"
+
+    BLUE = "\u001b[34m"
+    RED = "\u001b[31m"
+
+
 class MuxedStream(threading.Thread):
-    def __init__(self, name: str, parent_stream):
+    def __init__(self, parent_stream: BufferedWriter, prefix: str, suffix: str):
         super(MuxedStream, self).__init__(daemon=True)
         self.done = False
         self.read_fd, self.write_fd = os.pipe()
-        self.writer = os.fdopen(self.write_fd, 'w')
+        self.writer = os.fdopen(self.write_fd, "w")
         self.reader = os.fdopen(self.read_fd)
-        self.prefix = (name + " ").encode('utf-8')
+        self.prefix = prefix.encode('utf-8')
+        self.suffix = suffix.encode('utf-8')
         self.parent_stream = parent_stream
+
+        self.on_write_line_callback: Optional[Callable[[str], None]] = None
+
         self.start()
+
+    def on_write_line(self, callback: Callable[[str], None]):
+        self.on_write_line_callback = callback
 
     def fileno(self):
         return self.write_fd
@@ -33,9 +48,15 @@ class MuxedStream(threading.Thread):
     def run(self):
         try:
             while line := self.reader.readline():
+                line_bytes = line.encode("utf-8")
                 self.parent_stream.write(self.prefix)
-                self.parent_stream.write(line.encode('utf-8'))
-        except:
+                self.parent_stream.write(line_bytes)
+                self.parent_stream.write(self.suffix)
+                self.parent_stream.flush()
+
+                if self.on_write_line_callback:
+                    self.on_write_line_callback(line)
+        except Exception:
             print(traceback.format_exc())
             pass
         finally:
@@ -43,11 +64,11 @@ class MuxedStream(threading.Thread):
 
     def close(self):
         # self.done = True
-        os.close(self.writer)
+        os.close(self.writer)   # type: ignore
         pass
 
 
-def redirect(parent_stream) -> Tuple[threading.Thread, threading.Thread]:
+def redirect(parent_stream) -> Tuple[MuxedStream, MuxedStream]:
     """
     Enables the redirect for the current thread's output to a single cStringIO
     object and returns the object.
@@ -57,8 +78,8 @@ def redirect(parent_stream) -> Tuple[threading.Thread, threading.Thread]:
     """
     # Get the current thread's identity.
     ident = threading.currentThread().ident
-    stdout_thread = MuxedStream("STDOUT", parent_stream)
-    stderr_thread = MuxedStream("STDERR", parent_stream)
+    stdout_thread = MuxedStream(parent_stream, "STDOUT ", "")
+    stderr_thread = MuxedStream(parent_stream, "STDERR ", "")
     # Enable the redirect and return the cStringIO object.
     thread_proxies_stdout[ident] = stdout_thread.writer
     thread_proxies_stderr[ident] = stderr_thread.writer
@@ -97,6 +118,7 @@ def _get_stream(original, thread_proxies):
     :return: The inner function for use in the LocalProxy object.
     :rtype: ``function``
     """
+
     def proxy():
         """
         Returns the original stream if the current thread is not proxied,
@@ -120,14 +142,10 @@ def enable_proxy():
     Overwrites __stdout__, __stderr__, stdout, and stderr with the proxied
     objects.
     """
-    sys.__stdout__ = local.LocalProxy(
-        _get_stream(sys.__stdout__, thread_proxies_stdout))
-    sys.__stderr__ = local.LocalProxy(
-        _get_stream(sys.__stderr__, thread_proxies_stderr))
-    sys.stdout = local.LocalProxy(
-        _get_stream(sys.stdout, thread_proxies_stdout))
-    sys.stderr = local.LocalProxy(
-        _get_stream(sys.stderr, thread_proxies_stderr))
+    sys.__stdout__ = local.LocalProxy(_get_stream(sys.__stdout__, thread_proxies_stdout))
+    sys.__stderr__ = local.LocalProxy(_get_stream(sys.__stderr__, thread_proxies_stderr))
+    sys.stdout = local.LocalProxy(_get_stream(sys.stdout, thread_proxies_stdout))
+    sys.stderr = local.LocalProxy(_get_stream(sys.stderr, thread_proxies_stderr))
 
 
 def disable_proxy():

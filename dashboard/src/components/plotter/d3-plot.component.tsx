@@ -240,7 +240,7 @@ export const D3PlotComponent = (props: {
         <Modal
             title="Plot Data"
             centered
-            visible={jsonData}
+            open={jsonData}
             onOk={() => setJsonData(undefined)}
             onCancel={() => setJsonData(undefined)}
             width={1000}

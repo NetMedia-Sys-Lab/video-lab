@@ -1,9 +1,6 @@
 import asyncio
-from dataclasses import dataclass
 from functools import cached_property
-from pprint import pprint
 from typing import Callable, Optional, Tuple, Dict, TypedDict
-from inspect import iscoroutinefunction
 from src.job_framework.util import job_class
 from src.job_framework.jobs.job_base import JobBase
 
@@ -13,14 +10,12 @@ PRIMITIVES = (int, str, bool, str)
 PYTHON_JOB_CALLBACKS = {}
 
 
-def register_python_job(name:str = None):
-
+def register_python_job(name: Optional[str] = None):
     def decorator(func: Callable):
-        PYTHON_JOB_CALLBACKS[name or func.__name__]  = func
+        PYTHON_JOB_CALLBACKS[name or func.__name__] = func
         return func
 
     return decorator
-
 
 
 class PythonJobConfig(TypedDict):
@@ -42,6 +37,7 @@ def synchronize_async_helper(to_await):
     loop.run_until_complete(coroutine)
     return async_response[0]
 
+
 @job_class
 class PythonJob(JobBase):
     type = "PythonJob"
@@ -51,8 +47,7 @@ class PythonJob(JobBase):
         super().__init__(config=config, **kwargs)
 
     def run(self):
-        self.output = str(PYTHON_JOB_CALLBACKS[self.config['callback']](
-            *self.config['args'], **self.config['kwargs']))
+        self.output = str(PYTHON_JOB_CALLBACKS[self.config["callback"]](*self.config["args"], **self.config["kwargs"]))
 
     @cached_property
     def job_name(self):

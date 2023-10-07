@@ -36,9 +36,33 @@ export type RunBwEstimatedType = {
     time: number
 }
 export type RunVmafType = {
-    mean: number,
-    segments: number[]
+    frames: [{
+        frameNum: number
+        metrics: {
+            vmaf: number
+            psnr_y: number
+            float_ssim: number
+        }
+    }],
+    pooled_metrics: {
+        vmaf: {
+            min: number
+            max: number
+            mean: number
+        }
+        psnr_y: {
+            min: number
+            max: number
+            mean: number
+        }
+        float_ssim: {
+            min: number
+            max: number
+            mean: number
+        }
+    }
 }
+
 export type RunMicroStallsType = {
     segments: {
         play_duration: number,
@@ -77,7 +101,7 @@ export type RunDataType = {
     segments: RunSegmentType[]
     bandwidth_actual: [RunBwActualType]
     bandwidth_estimate: [RunBwEstimatedType]
-    vmaf: RunVmafType
+    vmaf?: RunVmafType
     // micro_stalls: RunMicroStallsType
 }
 

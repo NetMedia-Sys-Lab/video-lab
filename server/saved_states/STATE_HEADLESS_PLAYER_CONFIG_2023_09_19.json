@@ -1,0 +1,69 @@
+{
+    "key": "HEADLESS_PLAYER_CONFIG",
+    "value": {
+        "network": [
+            {
+                "name": "Fluctuating_4000_12s_500_12s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n"
+                }
+            }
+        ],
+        "analyzer": [
+            {
+                "name": "All",
+                "value": {
+                    "mod_analyzer": [
+                        "data_collector",
+                        "file_saver",
+                        "progress_logger"
+                    ],
+                    "live_log": "/run/event_logs.txt"
+                }
+            }
+        ],
+        "buffer": [
+            {
+                "name": "6s",
+                "value": {
+                    "buffer_duration": 6,
+                    "safe_buffer_level": 4,
+                    "panic_buffer_level": 2.5,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            }
+        ],
+        "method": [
+            {
+                "name": "DASH",
+                "value": {
+                    "mod_downloader": "tcp"
+                }
+            }
+        ],
+        "input": [
+            {
+                "name": "videos-raw/dash/bbb/bbb250ms_300s_i_crfall",
+                "value": {
+                    "input": "videos-raw/dash/bbb/bbb250ms_300s_i_crfall/output.mpd"
+                }
+            }
+        ],
+        "resultId": "bbb_300s_methods",
+        "repeat": 1,
+        "server": [
+            {
+                "name": "aioquic",
+                "value": {
+                    "server_image": "server_aioquic:latest"
+                }
+            }
+        ],
+        "abr": []
+    },
+    "id": 1695187786356
+}

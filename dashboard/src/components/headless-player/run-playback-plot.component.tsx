@@ -18,12 +18,11 @@ import { D3PlotBase } from "../plotter/d3-plot-base";
 import { D3PlotComponent } from "../plotter/d3-plot.component";
 import { DataFrameGroups } from "../plotter/dataframe";
 import { FramesListComponent } from "../video-tools/frames-list";
-import { useSavedState } from "../../common/util";
 
 
 const { Panel } = Collapse;
 
-export const RunTimelinePlotComponent = (props: {
+export const RunPlaybackPlotComponent = (props: {
     runsData: RunDataType[],
     onMarkerUpdate?: MarkerUpdateCallback
 }) => {
@@ -34,7 +33,7 @@ export const RunTimelinePlotComponent = (props: {
     const [plotError, setPlotError] = useState<string>()
     const [allPlotRunsSelected, setAllPlotRunsSelected] = useState<boolean>()
 
-    const [plotConfig, setPlotConfig] = useSavedState("TIMELINE_PLOT_CONFIG", {
+    const [plotConfig, setPlotConfig] = useState({
         plotDownloads: true,
         plotTotalSegmentSize: false,
         plotQualityLevels: true,

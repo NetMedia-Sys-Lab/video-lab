@@ -1,7 +1,15 @@
+.ant-drawer-body {
+    padding: 10 !important;
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+}
+
+
+.ant-tabs-nav-wrap {
+    // padding-left: 20px;
+}
+
 .job-list-drawer {
-    .ant-drawer-body {
-        padding: 0;
-    }
     .ant-drawer-content-wrapper {
         min-width: 75vw;
         max-width: 80vw;
@@ -20,6 +28,9 @@
     }
     li:active, li.selected {
       background-color: #68c8f8;
+    }
+    .ant-drawer-body {
+        padding: 0 !important;
     }
 }
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useContext, useMemo, useRef, useState } from "react";
 import {
     Button,
     Input,
@@ -20,6 +20,7 @@ import { makeHeadlessPlayerComparePath } from "./headless-player-compare.compone
 import { makeHeadlessPlayerSinglePath } from "./headless-player-single.component";
 import { NewRunFormComponent } from "../../components/headless-player/new-run-form.component";
 import { DeleteOutlined, ExperimentOutlined, ReloadOutlined } from "@ant-design/icons";
+import { JobManagerContext } from "../../app.context";
 
 const { Content } = Layout;
 
@@ -37,11 +38,12 @@ type RunOrResultType = {
 export const HeadlessPlayerComponent = () => {
     const [selectedRuns, setSelectedRuns] = useState<RunOrResultType[]>([]);
     const [activeTab, setActiveTab] = useState("runsHistory")
+    const { setJobManagerState } = useContext(JobManagerContext);
 
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
     const [filter, setFilter] = useState<RunsFilterType>({});
 
-    const { state: runStates } = useStateSocket<{ [runId: string]: RunProgressType }>("run_states", {});
+    const [runStates] = useStateSocket<{ [runId: string]: RunProgressType }>("run_states", {});
 
     const runRows = useMemo((): RunOrResultType[] => {
         const results: {
@@ -131,13 +133,18 @@ export const HeadlessPlayerComponent = () => {
                 <Button disabled={selectedRuns.length === 0} key="2" type="primary" onClick={async () => {
                     const response = await calculateRunQuality(selectedRuns.map(run => run.runId))
                     await notification.success({
-                        message: response.message || JSON.stringify(response)
+                        message: response.message || JSON.stringify(response),
+                        placement: "top"
                     });
+                    if (response.job_ids && response.job_ids.length === 1) {
+                        setJobManagerState({ selectedJobId: response.job_ids[0], autoRefresh: true })
+                    }
                 }}>Calculate VMAF</Button>
                 <Button disabled={selectedRuns.length === 0} key="5" type="primary" onClick={async () => {
                     const response = await encodePlayback(selectedRuns.map(run => run.runId))
                     await notification.success({
-                        message: response.message || JSON.stringify(response)
+                        message: response.message || JSON.stringify(response),
+                        placement: "top"
                     });
                 }}>Encode Playback</Button>
                 <Button disabled={selectedRuns.length === 0} key="3" type="primary"
@@ -147,19 +154,19 @@ export const HeadlessPlayerComponent = () => {
                     onClick={async () => {
                         const response = createTilesVideo(selectedRuns.map(run => run.runId))
                         await notification.success({
-                            message: "Success " + JSON.stringify(response)
+                            message: "Success " + JSON.stringify(response),
+                            placement: "top"
                         });
                     }}>Create Video Tiles</Button>
                 <Button disabled={selectedRuns.length === 0} key="7" type="primary"
                     onClick={async () => {
                         const runs = selectedRuns.filter(run => !run.runs);
-                        // try {
-                            const runConfigs = await getRunConfigs(runs.map(run => run.runId));
-                            const res = await postNewRunConfig(runConfigs);
-                            notification.success({ message: res.message });
-                        // } catch (err) {
-                            // notification.error({ message: JSON.stringify(err) });
-                        // }
+                        const runConfigs = await getRunConfigs(runs.map(run => run.runId));
+                        const res = await postNewRunConfig(runConfigs);
+                        notification.success({
+                            message: res.message,
+                            placement: "top"
+                        });
                     }}>Rerun</Button>
             </Space>
             <div style={{ flexGrow: '1' }}>
@@ -211,5 +218,5 @@ export const HeadlessPlayerPage: PageType = {
         label: 'Headless Player',
         icon: <ExperimentOutlined />
     },
-    component: <HeadlessPlayerComponent />
+    component: HeadlessPlayerComponent
 }

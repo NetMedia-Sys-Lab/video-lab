@@ -1,0 +1,517 @@
+{
+    "key": "HEADLESS_PLAYER_SETTING",
+    "value": {
+        "bufferOptions": [
+            {
+                "name": "2s",
+                "value": {
+                    "buffer_duration": 2,
+                    "safe_buffer_level": 2,
+                    "panic_buffer_level": 1,
+                    "min_rebuffer_duration": 1,
+                    "min_start_duration": 1
+                }
+            },
+            {
+                "name": "3s",
+                "value": {
+                    "buffer_duration": 3,
+                    "safe_buffer_level": 3,
+                    "panic_buffer_level": 1,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "4s",
+                "value": {
+                    "buffer_duration": 4,
+                    "safe_buffer_level": 3,
+                    "panic_buffer_level": 1,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "5s",
+                "value": {
+                    "buffer_duration": 5,
+                    "safe_buffer_level": 3,
+                    "panic_buffer_level": 1,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "6s",
+                "value": {
+                    "buffer_duration": 6,
+                    "safe_buffer_level": 4,
+                    "panic_buffer_level": 2.5,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "7s",
+                "value": {
+                    "buffer_duration": 7,
+                    "safe_buffer_level": 5,
+                    "panic_buffer_level": 1,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "8s",
+                "value": {
+                    "buffer_duration": 8,
+                    "safe_buffer_level": 6,
+                    "panic_buffer_level": 2.5,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "9s",
+                "value": {
+                    "buffer_duration": 9,
+                    "safe_buffer_level": 6,
+                    "panic_buffer_level": 2.5,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "10s",
+                "value": {
+                    "buffer_duration": 10,
+                    "safe_buffer_level": 6,
+                    "panic_buffer_level": 2.5,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "11s",
+                "value": {
+                    "buffer_duration": 11,
+                    "safe_buffer_level": 6,
+                    "panic_buffer_level": 2.5,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            },
+            {
+                "name": "25s",
+                "value": {
+                    "buffer_duration": 25,
+                    "safe_buffer_level": 5,
+                    "panic_buffer_level": 3,
+                    "min_rebuffer_duration": 2,
+                    "min_start_duration": 2
+                }
+            }
+        ],
+        "methodOptions": [
+            {
+                "name": "BETA",
+                "value": {
+                    "mod_beta": "beta",
+                    "mod_vq": "vq_fixed",
+                    "mod_downloader": "tcp"
+                }
+            },
+            {
+                "name": "DASH",
+                "value": {
+                    "mod_downloader": "tcp"
+                }
+            },
+            {
+                "name": "TASQ",
+                "value": {
+                    "mod_beta": "beta",
+                    "mod_vq": "vq_fixed",
+                    "mod_downloader": "quic",
+                    "K_MAXIMUM_WINDOW": 12000
+                }
+            },
+            {
+                "name": "DASH_QUIC",
+                "value": {
+                    "mod_downloader": "quic",
+                    "K_MAXIMUM_WINDOW": 12000000
+                }
+            },
+            {
+                "name": "GAMMA",
+                "value": {
+                    "test": "sdfsdsfdssssfsdf"
+                }
+            }
+        ],
+        "protocolOptions": [
+            {
+                "name": "TCP",
+                "value": {
+                    "mod_downloader": "tcp"
+                }
+            },
+            {
+                "name": "QUIC",
+                "value": {
+                    "mod_downloader": "quic",
+                    "K_MAXIMUM_WINDOW": "12000"
+                }
+            }
+        ],
+        "abrOptions": [
+            {
+                "name": "gamma_closed",
+                "value": {
+                    "mod_abr": "gamma:closed=true"
+                }
+            }
+        ],
+        "serverOptions": [
+            {
+                "name": "aioquic",
+                "value": {
+                    "server_image": "server_aioquic:latest"
+                }
+            }
+        ],
+        "analyzerOptions": [
+            {
+                "name": "All",
+                "value": {
+                    "mod_analyzer": [
+                        "data_collector",
+                        "file_saver",
+                        "progress_logger"
+                    ],
+                    "live_log": "/run/event_logs.txt"
+                }
+            }
+        ],
+        "networkOptions": [
+            {
+                "name": "drop_250",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n2000 35 1.0\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n250 75 1.75\n"
+                }
+            },
+            {
+                "name": "bw_rel_80",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "0.8*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+                }
+            },
+            {
+                "name": "bw_rel_100",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "1*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+                }
+            },
+            {
+                "name": "bw_rel_60",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "0.6*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+                }
+            },
+            {
+                "name": "bw_rel_90",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "0.9*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+                }
+            },
+            {
+                "name": "bw_rel_70",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "0.7*{30:8700000,35:5600000,40:3572290,45:2273771,50:1436528,55:933617,60:594665}[crf]/1000 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_3215",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "3215 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_2500",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "2500 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_2750",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "2750 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_3000",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "3000 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_3250",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "3250 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_3500",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "3500 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_3750",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "3750 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_4000",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "4000 35 1.0"
+                }
+            },
+            {
+                "name": "drop_6Mb_6s_3Mb",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 6\n3000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_12s_1Mb_12s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 12\n1000 35 1.0 12\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_6s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 6\n1000 35 1.0 6\n6000 35 1.0 6\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_4s_1Mb_4s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 4\n1000 35 1.0 4\n6000 35 1.0 4\n1000 35 1.0 4\n6000 35 1.0 4\n1000 35 1.0 4\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_3s_1Mb_3s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0 3\n1000 35 1.0 3\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_0s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_4s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 4\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_8s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 8\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_12s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 12\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_16s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 16\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_20s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 20\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_24s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 24\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_28s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 28\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_6Mb_32s_1Mb_6s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "6000 35 1.0 32\n1000 35 1.0 6\n6000 35 1.0\n"
+                }
+            },
+            {
+                "name": "bw_rel_90self",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "10000 35 1.0 0\n0.9*list(list(mpd.adaptation_sets.values())[0].representations.values())[0].bandwidth/1000 35 1.0\n"
+                }
+            },
+            {
+                "name": "fixed_2000",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "2000 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_1500",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "1500 35 1.0"
+                }
+            },
+            {
+                "name": "bw_rel_100s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "10000 35 1.0 0\n1.0*{'bbb':1424831,'tos':967053,'elephant':592827,'sintel':472036}[mpd.url.split('/')[-2].split('_')[0][:-2]]/1000 35 1.0"
+                }
+            },
+            {
+                "name": "fixed_2274",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "2274 35 1.0"
+                }
+            },
+            {
+                "name": "Drop_2000_4s_500",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "2000 35 0 4\n500 35 0\n"
+                }
+            },
+            {
+                "name": "Fluctuating_4000_12s_500_12s",
+                "value": {
+                    "mod_analyzer": [
+                        "network_manager"
+                    ],
+                    "bw_profile": "4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n4000 35 0 12\n500 35 0 12\n"
+                }
+            }
+        ]
+    },
+    "id": 1695180127613
+}

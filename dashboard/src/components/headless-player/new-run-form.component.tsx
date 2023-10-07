@@ -1,6 +1,6 @@
 import { Button, Checkbox, Col, Drawer, Form, FormInstance, Input, InputNumber, message, Row, Select, Space, Spin } from "antd"
 import { createRef, useEffect, useState } from "react"
-import { postNewRunConfig } from "../../common/api"
+import { postNewRunConfig, useStateSocket } from "../../common/api"
 import { EditOutlined, PlusOutlined, MinusCircleOutlined } from "@ant-design/icons"
 import { ExtraTabType, OptionEditorComponent, OptionType } from "../misc/option-editor.component"
 import { getAllInputPaths } from "../../common/dataset.api"
@@ -9,50 +9,30 @@ import { RunConfig } from "../../types/result.type"
 
 const HEADLESS_PLAYER_SETTING = "HEADLESS_PLAYER_SETTING";
 const HEADLESS_PLAYER_LAST_CONFIG = "HEADLESS_PLAYER_LAST_CONFIG";
+const HEADLESS_PLAYER_CONFIG = "HEADLESS_PLAYER_CONFIG";
 
 type HeadlessPlayerSetting = {
-    bufferOptions: OptionType[],
-    methodOptions: OptionType[],
-    // protocolOptions: OptionType[]
-    abrOptions: OptionType[]
-    serverOptions: OptionType[],
-    analyzerOptions: OptionType[],
-    networkOptions: OptionType[],
+    bufferOptions?: OptionType[],
+    methodOptions?: OptionType[],
+    abrOptions?: OptionType[]
+    serverOptions?: OptionType[],
+    analyzerOptions?: OptionType[],
+    networkOptions?: OptionType[],
 }
-
-// type RunConfig = { [key: string]: any }
 
 export const NewRunFormComponent = (props: {
     onRunScheduled: (resultId: string) => void
 }) => {
     const { onRunScheduled } = props
     const [isScheduling, setIsScheduling] = useState(false)
-    // const formRef = createRef<FormInstance>()
-    // const defaultValues = JSON.parse(localStorage.getItem("new-run-last-values") || "{}")
-    const [config, setConfig] = useState<{ [key: string]: any }>({});
+    const [config, setConfig] = useStateSocket<{ [key: string]: any }>(HEADLESS_PLAYER_CONFIG, {});
     const [runConfigs, setRunConfigs] = useState<RunConfig[]>([]);
 
     // Settings
+    const [setting, setSetting] = useStateSocket<HeadlessPlayerSetting>(HEADLESS_PLAYER_SETTING, {});
     const [inputOptions, setInputOptions] = useState<OptionType[]>([]);
-    const [bufferOptions, setBufferOptions] = useState<OptionType[]>([]);
-    const [methodOptions, setMethodOptions] = useState<OptionType[]>([]);
-    // const [protocolOptions, setProtocolOptions] = useState<OptionType[]>([]);
-    const [abrOptions, setAbrOptions] = useState<OptionType[]>([]);
-    const [serverOptions, setServerOptions] = useState<OptionType[]>([]);
-    const [analyzerOptions, setAnalyzerOptions] = useState<OptionType[]>([]);
-    const [networkOptions, setNetworkOptions] = useState<OptionType[]>([]);
 
     useEffect(() => {
-        setConfig(JSON.parse(localStorage.getItem(HEADLESS_PLAYER_LAST_CONFIG) || "{}"));
-        // Load settings
-        const setting: HeadlessPlayerSetting = JSON.parse(localStorage.getItem(HEADLESS_PLAYER_SETTING) || "{}");
-        setMethodOptions(setting.methodOptions ?? []);
-        // setProtocolOptions(setting.protocolOptions ?? []);
-        setBufferOptions(setting.bufferOptions ?? []);
-        setAbrOptions(setting.abrOptions ?? []);
-        setServerOptions(setting.serverOptions ?? []);
-        setAnalyzerOptions(setting.analyzerOptions ?? []);
-        setNetworkOptions(setting.networkOptions ?? []);
         getAllInputPaths().then(inputPaths => {
             setInputOptions(inputPaths.map(path => {
                 let name = path;
@@ -63,19 +43,6 @@ export const NewRunFormComponent = (props: {
             }));
         })
     }, []);
-
-    useEffect(() => {
-        // Save settings
-        const setting: HeadlessPlayerSetting = JSON.parse(localStorage.getItem(HEADLESS_PLAYER_SETTING) || "{}");
-        setting.bufferOptions = bufferOptions;
-        // setting.protocolOptions = protocolOptions;
-        setting.methodOptions = methodOptions;
-        setting.abrOptions = abrOptions;
-        setting.serverOptions = serverOptions;
-        setting.analyzerOptions = analyzerOptions;
-        setting.networkOptions = networkOptions;
-        localStorage.setItem(HEADLESS_PLAYER_SETTING, JSON.stringify(setting, null, 4));
-    }, [bufferOptions, methodOptions, abrOptions, serverOptions, analyzerOptions, networkOptions])
 
     useEffect(() => {
         // Generate run configs
@@ -152,6 +119,11 @@ export const NewRunFormComponent = (props: {
             })
     }
 
+    const setSettingOptions = (key: keyof HeadlessPlayerSetting, value: OptionType[]) => {
+        console.log(`Setting ${key} =`, value);
+        setSetting({ ...setting, [key]: value });
+    }
+
     return <Spin tip="Scheduling" spinning={isScheduling}>
 
         <table className="new-run-table">
@@ -161,25 +133,17 @@ export const NewRunFormComponent = (props: {
             </tr>
 
             <ConfigParamSelect label="Inputs" value={config.input} options={inputOptions} setOptions={setInputOptions} onChange={(val) => setConfig({ ...config, input: val })} extraTabs={[
-                // {
-                //     title: "output.mpd",
-                //     render: (opt: OptionType) =>
-                //         <pre>
-                //             {JSON.stringify(opt.value, null, 4)}
-                //         </pre>
-                // }
             ]} />
-            <ConfigParamCheckbox label="Methods" selectedOptions={config.method} options={methodOptions} setOptions={setMethodOptions} onChange={(val) => setConfig({ ...config, method: val })} />
-            {/* <ConfigParamCheckbox label="Protocols" value={config.protocol} options={protocolOptions} setOptions={setProtocolOptions} onChange={(val) => setConfig({ ...config, protocol: val })} /> */}
-            <ConfigParamCheckbox label="Buffer Settings" selectedOptions={config.buffer} options={bufferOptions} setOptions={setBufferOptions} onChange={(val) => setConfig({ ...config, buffer: val })} />
-            <ConfigParamCheckbox label="Adaptation Algorithm" selectedOptions={config.abr} options={abrOptions} setOptions={setAbrOptions} onChange={(val) => setConfig({ ...config, abr: val })} />
-            <ConfigParamCheckbox label="Server" selectedOptions={config.server} options={serverOptions} setOptions={setServerOptions} onChange={(val) => setConfig({ ...config, server: val })} />
-            <ConfigParamCheckbox label="Analyzers" selectedOptions={config.analyzer} options={analyzerOptions} setOptions={setAnalyzerOptions} onChange={(val) => setConfig({ ...config, analyzer: val })} />
-            <ConfigParamSelect label="Network" value={config.network} options={networkOptions} setOptions={setNetworkOptions} onChange={(val) => setConfig({ ...config, network: val })} />
+            <ConfigParamCheckbox label="Methods" selectedOptions={config.method} options={setting.methodOptions || []} setOptions={setSettingOptions.bind(this, "methodOptions")} onChange={(val) => setConfig({ ...config, method: val })} />
+            <ConfigParamCheckbox label="Buffer Settings" selectedOptions={config.buffer} options={setting.bufferOptions || []} setOptions={setSettingOptions.bind(this, "bufferOptions")} onChange={(val) => setConfig({ ...config, buffer: val })} />
+            <ConfigParamCheckbox label="Adaptation Algorithm" selectedOptions={config.abr} options={setting.abrOptions || []} setOptions={setSettingOptions.bind(this, "abrOptions")} onChange={(val) => setConfig({ ...config, abr: val })} />
+            <ConfigParamCheckbox label="Server" selectedOptions={config.server} options={setting.serverOptions || []} setOptions={setSettingOptions.bind(this, "serverOptions")} onChange={(val) => setConfig({ ...config, server: val })} />
+            <ConfigParamCheckbox label="Analyzers" selectedOptions={config.analyzer} options={setting.analyzerOptions || []} setOptions={setSettingOptions.bind(this, "analyzerOptions")} onChange={(val) => setConfig({ ...config, analyzer: val })} />
+            <ConfigParamSelect label="Network" value={config.network} options={setting.networkOptions || []} setOptions={setSettingOptions.bind(this, "networkOptions")} onChange={(val) => setConfig({ ...config, network: val })} />
 
             <tr>
                 <th>Repeat</th>
-                <td><InputNumber min={1} max={100} defaultValue={1} onChange={repeat => setConfig({ ...config, repeat })} /></td>
+                <td><InputNumber min={1} max={100} value={config.repeat} onChange={repeat => setConfig({ ...config, repeat })} /></td>
             </tr>
 
             <tr>

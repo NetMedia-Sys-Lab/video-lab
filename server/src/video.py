@@ -14,6 +14,12 @@ import logging
 import xml.etree.ElementTree as ET
 
 
+
+def read_bytes(filepath: str) -> bytes:
+    with open(filepath, "rb") as f:
+        return f.read()
+
+
 class Video:
     log = logging.getLogger("Video")
     video_bytes: bytearray
@@ -28,7 +34,11 @@ class Video:
         for part in parts:
             url, *transforms = part.split(";")
             print(f"Applying transform on {part}")
-            content = self.apply_transforms(requests.get(url.strip()).content, transforms)
+            if url.startswith("http"):
+                content = requests.get(url.strip()).content
+            else:
+                content = read_bytes(url)
+            content = self.apply_transforms(content, transforms)
             self.part_offsets.add(len(self.video_bytes))
             self.video_bytes.extend(content)
         self.part_offsets.add(len(self.video_bytes))

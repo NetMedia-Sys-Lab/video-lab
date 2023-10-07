@@ -13,6 +13,9 @@
     "dataset": {
         "datasetDir": "/home/akram/ucalgary/research/istream-player/dataset"
     },
+    "stateManager": {
+        "statesDir": "saved_states"
+    },
     "vmafDir": "/home/akram/ucalgary/research/video-lab/server/third_party/vmaf",
     "cacheDir": "/home/akram/ucalgary/research/tmp",
     "SSLKEYLOGFILE": "/home/akram/ucalgary/research/certs/ssl_keylog.txt",

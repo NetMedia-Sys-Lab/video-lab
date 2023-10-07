@@ -70,7 +70,6 @@ export class D3PlotRect<T> extends D3PlotBase<T> {
                 class: this.class,
                 ref: (d: any) => d,
             });
-            console.log(plotDfRect);
             // @ts-ignore
             this.drawRect(plot, yScale, plotDfRect, this.onSelect && this.onSelect.bind(this, gid));
 

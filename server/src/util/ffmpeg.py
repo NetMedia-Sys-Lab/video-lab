@@ -5,7 +5,6 @@ import itertools
 import json
 from os import mkdir
 from pathlib import Path
-import re
 import subprocess
 import sys
 import tempfile
