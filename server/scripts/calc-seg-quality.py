@@ -7,9 +7,6 @@ import csv
 from collections import defaultdict
 
 runs = {
-    'TASQ': "/home/akram/ucalgary/research/runs/results-av1-001/run_drop-low_long-buffer_default_av1_Burn_2sec_beta_quic_01",
-    'BETA': "/home/akram/ucalgary/research/runs/results-av1-001/run_drop-low_long-buffer_default_av1_Burn_2sec_beta_tcp_01",
-    'DASH': "/home/akram/ucalgary/research/runs/results-av1-001/run_drop-low_long-buffer_default_av1_Burn_2sec_nonbeta_tcp_01",
 }
 
 plot_data = defaultdict(dict)
