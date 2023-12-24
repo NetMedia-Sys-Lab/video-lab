@@ -193,11 +193,11 @@ export const RunTimelinePlotComponent = (props: {
         }
 
         if (plotConfig.plotQualityLevels) {
-            segments.plotBar(plots, {
-                yAcc: r => (7 - r.quality),
+            segments.plotLine(plots, {
+                yAcc: r => r.quality,
                 xAcc: r => r.start_time,
-                axisIndex: 0,
-                opacity: 0.5
+                axisIndex: -1,
+                text: r => r.quality.toString()
             });
         }
 
@@ -260,7 +260,7 @@ export const RunTimelinePlotComponent = (props: {
             const tc_stats = new DataFrameGroups<TcStatType>(
                 objectMap(plotData, (d) => d.tc_stats.map((stat: any) => ({
                     time: stat.time,
-                    ...stat.qdiscs[plotConfig.backlogQdisc]
+                    ...(Object.values(stat.qdiscs)[0] as any)
                 }))),
                 "time", { colors }
             );

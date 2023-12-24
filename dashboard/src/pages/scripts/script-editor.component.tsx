@@ -3,6 +3,7 @@ import { PageType } from "../../types/page.type";
 import { useStateSocket } from "../../common/api";
 import { ScriptType } from "../../types/scripts.type";
 import { Editor } from "@monaco-editor/react";
+import { languages, editor } from "monaco-editor/esm/vs/editor/editor.api";
 import { useContext, useEffect, useRef, useState } from "react";
 import { Button, Checkbox, Space, Typography, notification } from "antd";
 import { PlaySquareFilled, SaveFilled } from "@ant-design/icons";
@@ -28,7 +29,7 @@ const ScriptEditorComponent = (props: {}) => {
 
     const { setJobManagerState } = useContext(JobManagerContext);
 
-    const editorRef = useRef(null);
+    const editorRef = useRef<editor.IStandaloneCodeEditor>(null);
 
     if (!script) {
         return <>Loading</>
@@ -72,6 +73,7 @@ const ScriptEditorComponent = (props: {}) => {
                     "py": "python",
                 }[script.path.split(".").pop()?.toLowerCase() || "txt"]}
                 defaultValue={scriptContent}
+                // @ts-ignore
                 onMount={(editor, monaco) => editorRef.current = editor}
                 onChange={(value) => {
                     const isSaved = scriptContent === value

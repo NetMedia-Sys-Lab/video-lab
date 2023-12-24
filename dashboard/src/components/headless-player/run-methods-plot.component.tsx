@@ -38,14 +38,32 @@ function commonSuffixIndex(strs: string[]) {
     return minLength;
 }
 
-type GroupOptions = "method" | "resultId" | "bufferSelection" | "networkSelection" | "segDuration" | "crf";
+type GroupOptions = "method" | "resultId" | "bufferSelection" | "networkSelection" | "segDuration" | "crf" | "segmentType" | "segmentTypeDur";
 
-type XAxisOptions = "resultId" | "video" | "bufferSelection" | "segLength" | "K_MAXIMUM_WINDOW" | "crf" | "networkSelection" | "segDuration";
+type XAxisOptions = "resultId" | "videoName" | "video" | "bufferSelection" | "segLength" | "K_MAXIMUM_WINDOW" | "crf" | "networkSelection" | "segDuration";
 
 type YAxisOptions = "name" | "video" | "bufferSelection" | "segLength" | "method" | "numBuffStall"
-    | "durBuffStall" | "vmaf" | "durStall" | "quality";
+    | "durBuffStall" | "vmaf" | "durStall" | "quality" | "durIdle" | "bitrate" | "numMicroStall" | "durMicroStall" | "avgDurMicroStall";
 
 type DataRow = Record<GroupOptions | XAxisOptions | YAxisOptions, string | number>;
+
+function sum(vals?: number[]) {
+    if (!vals) return 0;
+    let total = 0;
+    for (const num of vals) {
+        total += num;
+    }
+    return total;
+}
+
+function mean(vals?: number[]) {
+    if (!vals?.length) return 0;
+    let total = 0;
+    for (const num of vals) {
+        total += num;
+    }
+    return total/vals.length;
+}
 
 export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] }) => {
     const [plotType, setPlotType] = useSavedState<"line" | "bar">('METHOD_PLOT_TYPE', "line");
@@ -76,9 +94,9 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
             const video = r.run_config.input.startsWith("https://server:443/") ? r.run_config.input.slice(19) : r.run_config.input;
             
             let crfMatches = /crf(\d+)/g.exec(r.run_config.run_id);
-            let segDurMatches = /\/[a-z]+(\d+)ms/g.exec(r.run_config.input);
-            let videoNameMatches = /\/([a-z]+)\d+ms/g.exec(r.run_config.input);
-            let segmentTypeMatches = /\/[a-z]+\d+ms_\d+s_((?:i|s)+)_/g.exec(r.run_config.input);
+            let segDurMatches = /\/[a-z]+_(\d+)ms/g.exec(r.run_config.input);
+            let videoNameMatches = /\/([a-z]+)_\d+ms/g.exec(r.run_config.input);
+            let segmentTypeMatches = /\/[a-z]+_\d+ms_\d+s_((?:i|s)+)_/g.exec(r.run_config.input);
             return {
                 name,
                 resultId: r.run_config.run_id.split('/', 1)[0],
@@ -88,49 +106,76 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
                 method,
                 numBuffStall: r.num_stall,
                 durBuffStall: Math.round(r.dur_stall * 1000)/1000,
+                durIdle: Math.round(r.dur_idle * 1000)/1000,
                 
                 vmaf: r.vmaf?.pooled_metrics.vmaf.mean,
                 vmafMin: r.vmaf?.pooled_metrics.vmaf.min,
-                // vmafLoss: (100 - (r.vmaf?.pooled_metrics.vmaf || 100) as any),
-                // durMicroStall: r.micro_stalls.total_stall_duration * 1000,
-                // durUnnoticeable: (r.micro_stalls.total_stall_duration - r.micro_stalls.long_stall_duration) * 1000,
                 numSwitches: r.num_quality_switches,
-                // durStall: r.dur_stall * 1000 + r.micro_stalls.total_stall_duration * 1000,
-                // durLongStall: r.dur_stall * 1000 + r.micro_stalls.long_stall_duration * 1000,
-                // durStallPerc: (r.dur_stall + r.micro_stalls.total_stall_duration) * 100 / totalDuration,
-                quality: new DataFrame(r.segments).avgField(r => 6 - r.quality),
+                quality: new DataFrame(r.segments).avgField(r => r.quality),
                 quality_std: new DataFrame(r.segments).std(r => r.quality),
                 bitrate: new DataFrame(r.segments).avgField(r => r.bitrate),
                 bitrate_std: new DataFrame(r.segments).std(r => r.bitrate),
                 K_MAXIMUM_WINDOW: parseInt(r.run_config.K_MAXIMUM_WINDOW),
                 networkSelection: r.run_config._selections.network,
+                numMicroStall: r.micro_stalls?.groups.length,
+                durMicroStall: sum(r.micro_stalls?.groups),
+                avgDurMicroStall: mean(r.micro_stalls?.groups),
 
                 // Optional Fields
                 crf: crfMatches ? crfMatches[1] : undefined,
                 videoName: videoNameMatches ? videoNameMatches[1] : undefined,
                 segDuration: segDurMatches ? segDurMatches[1] : undefined,
                 segmentType: segmentTypeMatches ? segmentTypeMatches[1] : undefined,
+                segmentTypeDur: segmentTypeMatches && segDurMatches ? `${segmentTypeMatches[1]}/${segDurMatches[1]}ms` : undefined,
             } as any
         }, "name")
     }, [runsData])
 
     useEffect(() => {
-        if (!df) return
-
-        const plots: D3PlotBase<any>[] = []
-        const dfGroup = df.groupBy(r => r[group]).mapGroups(
-            (groupId, df1) => {
-                const ret = df1.groupBy(r => r[xAxis]!)
+        const indexField: keyof DataRow = "videoName";
+        if (!df) return;
+        const dfGroup = df!.groupBy(r=>r.segmentTypeDur).mapGroups(
+            (segmentType, df1) => {
+                const ret = df1.groupBy(r => r[indexField]!)
                     .reduce((groupByValue, df2) => ({
-                        [group]: groupId,
-                        [xAxis]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
-                        [yAxis]: df2.avgField(r => r[yAxis]!),
-                        "durBuffStall": df2.avgField(r => r.durBuffStall!),
-                    }), xAxis);
-                ret.sortNumerical(xAxis);
+                        segmentType,
+                        [indexField]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+                        durBuffStall: Math.round(df2.avgField(r => r.durBuffStall)*1000)/1000,
+                        durIdle: Math.round(df2.avgField(r=>r.durIdle)*1000)/1000,
+                        vmaf: Math.round(df2.avgField(r=>r.vmaf)*1000)/1000,
+                        quality: Math.round(df2.avgField(r=>r.quality)*1000)/1000,
+                        bitrate: Math.round(df2.avgField(r=>r.bitrate)*1000)/1000,
+                        avgDurMicroStall: Math.round(df2.avgField(r=>r.avgDurMicroStall)*1000)/1000,
+                        durMicroStall: Math.round(df2.avgField(r=>r.durMicroStall)*1000)/1000,
+                    }), indexField);
+                ret.sortNumerical(indexField);
                 return ret
             }
         )
+        console.log(dfGroup.toPandasDF());
+    }, [df]);
+
+    const getDfGroup = (g: keyof DataRow, x: keyof DataRow, y: keyof DataRow) => {
+        return df!.groupBy(r => r[g]).mapGroups(
+            (groupId, df1) => {
+                const ret = df1.groupBy(r => r[x]!)
+                    .reduce((groupByValue, df2) => ({
+                        [g]: groupId,
+                        [x]: isNaN(groupByValue as any) ? groupByValue : parseInt(groupByValue),
+                        [y]: df2.avgField(r => r[y]!),
+                        // "durBuffStall": df2.avgField(r => r.durBuffStall!),
+                    }), x);
+                ret.sortNumerical(x);
+                return ret
+            }
+        )
+    }
+
+    useEffect(() => {
+        if (!df) return
+
+        const plots: D3PlotBase<any>[] = []
+        const dfGroup = getDfGroup(group, xAxis, yAxis);
         if (plotType === "bar") {
 
             dfGroup.col(yAxis).plotBar(plots, {
@@ -182,7 +227,7 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
             <Select.Option value={"bar"}>Bar</Select.Option>
         </Select>
         &nbsp;&nbsp; Group By &nbsp;&nbsp;&nbsp;
-        <Select placeholder="Group By" value={group} onChange={setGroup}>
+        <Select placeholder="Group By" style={{width: 200}} value={group} onChange={setGroup}>
             <Select.Option value={"method"}>Method</Select.Option>
             <Select.Option value={"resultId"}>Result ID</Select.Option>
             <Select.Option value={"bufferSelection"}>Buffer Selection</Select.Option>
@@ -190,7 +235,9 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
             <Select.Option value={"networkSelection"}>Network Selection</Select.Option>
             <Select.Option value={"crf"}>CRF</Select.Option>
             <Select.Option value={"videoName"}>Video Name</Select.Option>
+            <Select.Option value={"video"}>Video</Select.Option>
             <Select.Option value={"segmentType"}>Segment Type</Select.Option>
+            <Select.Option value={"segmentTypeDur"}>Segment Type/Duration</Select.Option>
         </Select>
         &nbsp;&nbsp; X Axis &nbsp;&nbsp;&nbsp;
         <Select style={{ width: 200 }} placeholder="X Axis" value={xAxis} onChange={setXAxis}>
@@ -211,9 +258,11 @@ export const RunMethodsPlotComponent = ({ runsData }: { runsData: RunDataType[] 
         <Space>
             <Select style={{ width: 300 }} placeholder="Y Axis" onChange={setYAxis} value={yAxis}>
                 <Select.Option value="durBuffStall">Duration of Buffering Stalls (ms)</Select.Option>
-                <Select.Option value="durMicroStall">Duration of Micro Stalls (ms)</Select.Option>
-                <Select.Option value="durUnnoticeable">Duration of Unnoticeable Micro Stalls (ms)</Select.Option>
-                <Select.Option value="durStall">Duration of All Stalls (ms)</Select.Option>
+                <Select.Option value="numMicroStall">Number of Micro Stalls</Select.Option>
+                <Select.Option value="durMicroStall">Duration of Micro Stalls (frames)</Select.Option>
+                <Select.Option value="avgDurMicroStall">Avg. Duration of Micro Stalls (frames)</Select.Option>
+                <Select.Option value="durStall">Duration of All Stalls (s)</Select.Option>
+                <Select.Option value="durIdle">Duration of Idle Network (s)</Select.Option>
                 <Select.Option value="durStallPerc">Duration of All Stalls (%)</Select.Option>
                 <Select.Option value="numBuffStall">Number of Buffering Stalls</Select.Option>
                 <Select.Option value="numSwitches">Number of Switches</Select.Option>

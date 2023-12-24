@@ -1,5 +1,6 @@
+import { FullscreenOutlined } from "@ant-design/icons";
 import Ansi from "ansi-to-react";
-import { Input } from "antd";
+import { Button, Input } from "antd";
 import { useEffect, useMemo, useRef, useState } from "react"
 
 export const LogsViewerComponent = (props: {
@@ -43,6 +44,12 @@ export const LogsViewerComponent = (props: {
                 width: 400,
             }}
         />
+        <Button style={{float: "right"}} icon={<FullscreenOutlined />} onClick={() => {
+            if (document.fullscreenElement)
+                document.exitFullscreen();
+            else
+                logsRef.current?.requestFullscreen();
+        }}/>
         <div
             ref={logsRef}
             style={{ 

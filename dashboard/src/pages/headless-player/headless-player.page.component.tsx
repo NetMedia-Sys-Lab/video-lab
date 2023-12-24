@@ -10,7 +10,7 @@ import {
     Tabs
 } from "antd";
 
-import { calculateRunQuality, createTilesVideo, deleteRuns, encodePlayback, getRunConfigs, postNewRunConfig, useStateSocket } from "../../common/api";
+import { calculateRunQuality, createTilesVideo, deleteRuns, encodePlayback, fillFrames, getRunConfigs, postNewRunConfig, useStateSocket } from "../../common/api";
 import { RunsFilterType } from "../../types/result.type";
 import { ColumnsType } from "antd/lib/table";
 import { Link } from "react-router-dom";
@@ -21,6 +21,7 @@ import { makeHeadlessPlayerSinglePath } from "./headless-player-single.component
 import { NewRunFormComponent } from "../../components/headless-player/new-run-form.component";
 import { DeleteOutlined, ExperimentOutlined, ReloadOutlined } from "@ant-design/icons";
 import { JobManagerContext } from "../../app.context";
+import { useSavedState } from "../../common/util";
 
 const { Content } = Layout;
 
@@ -41,7 +42,7 @@ export const HeadlessPlayerComponent = () => {
     const { setJobManagerState } = useContext(JobManagerContext);
 
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
-    const [filter, setFilter] = useState<RunsFilterType>({});
+    const [filter, setFilter] = useState<string>("");
 
     const [runStates] = useStateSocket<{ [runId: string]: RunProgressType }>("run_states", {});
 
@@ -55,7 +56,7 @@ export const HeadlessPlayerComponent = () => {
         } = {}
 
         for (const runId in runStates) {
-            if (filter.runId && !runId.match(filter.runId)) continue;
+            if (filter && !runId.match(filter)) continue;
             const resultId = runId.split('/', 1)[0];
             if (!results[resultId]) results[resultId] = [];
             results[resultId].push({
@@ -150,6 +151,14 @@ export const HeadlessPlayerComponent = () => {
                 <Button disabled={selectedRuns.length === 0} key="3" type="primary"
                     href={makeHeadlessPlayerComparePath(selectedRuns.map(run => run.runId))}>Plot
                     Selected</Button>
+                <Button disabled={selectedRuns.length === 0} key="filler" type="primary"
+                    onClick={async () => {
+                        const response = fillFrames(selectedRuns.map(run => run.runId))
+                        await notification.success({
+                            message: "Success " + JSON.stringify(response),
+                            placement: "top"
+                        });
+                    }}>Fill Frames</Button>
                 <Button disabled={selectedRuns.length === 0} key="6" type="primary"
                     onClick={async () => {
                         const response = createTilesVideo(selectedRuns.map(run => run.runId))
@@ -172,8 +181,8 @@ export const HeadlessPlayerComponent = () => {
             <div style={{ flexGrow: '1' }}>
                 <Tabs defaultActiveKey="1" size={"large"} activeKey={activeTab} onChange={key => setActiveTab(key)}>
                     <Tabs.TabPane tab="Runs History" key="runsHistory">
-                        <Input.Search placeholder="Search Run" onSearch={(value) => {
-                            setFilter({ ...filter, runId: value })
+                        <Input.Search placeholder="Search Run" defaultValue={filter} onSearch={(value) => {
+                            setFilter(value)
                         }} style={{ width: 500 }} />
                         <Table
                             dataSource={runRows}

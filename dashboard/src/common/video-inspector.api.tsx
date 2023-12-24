@@ -22,6 +22,6 @@ export const useVideoDetails = createUseAPI<[videoUrls: string, refPaths?: strin
     return data;
 });
 
-export const videoPlaybackPath = (videoUrls: string) => {
-    return `${VideoInspectorApi}/video/playback.mp4?urls=${euc(videoUrls)}`
+export const videoPlaybackPath = (videoUrls: string, ext: string = "mp4") => {
+    return `${VideoInspectorApi}/video/playback.${ext}?urls=${euc(videoUrls)}`
 }

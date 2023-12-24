@@ -71,16 +71,23 @@ export function useQueryArray(varName: string, defaultValue?: string[]) {
 }
 
 export function useSavedState<T>(varName: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-    const [state, setState] = useState<T>(defaultValue);
+    const getStoredValue = () => {
+        try {
+            const storedState = localStorage.getItem(localStorageKey);
+            if (storedState) {
+                return JSON.parse(storedState);
+            }
+        } catch (e) { }
+            return undefined;
+    }
+    const [state, setState] = useState<T>(getStoredValue() ?? defaultValue);
     const localStorageKey = `VAR_${varName}`;
 
+
     useEffect(() => {
-        const storedState = localStorage.getItem(localStorageKey);
-        if (storedState) {
-            try {
-                setState(JSON.parse(storedState));
-            } catch (e) { }
-        }
+        const storedState = getStoredValue();
+        if (storedState !== undefined)
+            setState(storedState);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

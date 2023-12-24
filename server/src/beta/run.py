@@ -133,7 +133,7 @@ class Run:
         return sum(seg["duration"] for seg in self.details()["segments"])
 
     def raw_video_path(self):
-        DATASET_BASE = join(CONFIG["dataset"]["datasetDir"], "videos-raw", "full")
+        DATASET_BASE = join(CONFIG["dataset"]["datasetDir"], "full")
         RAW_VID = {
             "bbb": join(DATASET_BASE, "big_buck_bunny_1080p24.y4m"),
             "burn": join(DATASET_BASE, "controlled_burn_1080p.y4m"),
@@ -195,7 +195,15 @@ class Run:
         except Exception:
             return None
 
-    # def micro_stalls(self):
+    def micro_stalls(self):
+        microstalls_file = join(self.run_dir, "microstalls.json")
+        try:
+            with open(microstalls_file) as f:
+                return json.load(f)
+        except Exception:
+            return None
+    #     for segment in self.details()["segments"]:
+            
     #     stall_files = []
     #     for index in self.segments_df.index:
     #         filename: str = basename(urlparse(self.segments_df["url"][index]).path)
@@ -298,6 +306,7 @@ class Run:
                 for ev in self.bandwidth_actual()
             ],
             "vmaf": self.vmaf(),
+            "micro_stalls": self.micro_stalls(),
         }
 
     def delete(self):

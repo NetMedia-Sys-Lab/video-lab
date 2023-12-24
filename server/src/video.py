@@ -13,7 +13,8 @@ from sortedcontainers import SortedList
 import logging
 import xml.etree.ElementTree as ET
 
-
+with open("config.json") as config_file:
+    CONFIG = json.load(config_file)
 
 def read_bytes(filepath: str) -> bytes:
     with open(filepath, "rb") as f:
@@ -36,37 +37,57 @@ class Video:
             print(f"Applying transform on {part}")
             if url.startswith("http"):
                 content = requests.get(url.strip()).content
-            else:
+            elif url.startswith("/"):
                 content = read_bytes(url)
-            content = self.apply_transforms(content, transforms)
+            else:
+                content = read_bytes(path.join(CONFIG["dataset"]["datasetDir"], url))
+            content = self.apply_transforms(content, transforms, len(content))
             self.part_offsets.add(len(self.video_bytes))
             self.video_bytes.extend(content)
         self.part_offsets.add(len(self.video_bytes))
 
-    def apply_transforms(self, content: bytes, transforms):
-        src_size = len(content)
+    @staticmethod
+    def get_frame_stats(content: bytes, src_size: int):
+        samples = Video.get_samples(content, src_size)
+        count = 1
+        for offset, size in samples[1:]:
+            if offset+size > len(content):
+                break
+            count += 1
+        return len(samples), len(samples) - count
+    
+    @staticmethod
+    def apply_transforms(content: bytes, transforms, src_size):
+        '''
+        content: segment bytes
+        transform: Transform string
+        src_size: Size of complete segment (without cuts)
+        '''
         for trans in transforms:
             trans_name = trans.strip().split("=")[0].lower()
             if trans_name == "head":
-                cut = self.rel_to_abs(trans.split("=")[1], src_size)
+                cut = Video.rel_to_abs(trans.split("=")[1], src_size)
                 content = content[:cut]
             elif trans_name == "trim_sample":
-                samples = self.get_samples(content, src_size)
+                samples = Video.get_samples(content, src_size)
                 print("Total samples : ", len(samples))
+                trim_len = src_size
                 while samples and (samples[-1][0] + samples[-1][1]) > len(content):
-                    samples.pop()
+                    trim_len = samples.pop()[0]
                 assert len(samples) > 0, "No sample left"
                 print("Valid samples : ", len(samples))
-                content = content[: samples[-1][0] + samples[-1][1]]
+                content = content[: trim_len]
             elif trans_name == "pad":
                 pad_byte = int(trans.split("=")[1], 0)
                 content += bytes([pad_byte] * (src_size - len(content)))
             elif trans_name == "remove_sample":
                 rem = list(map(int, trans.split("=")[1].split(",")))
-                samples = self.get_samples(content, src_size)
+                samples = Video.get_samples(content, src_size)
                 for i in rem:
                     offset, size = samples[i]
-                    content = content[:offset] + bytes([0] * size) + content[offset + size :]
+                    content = (
+                        content[:offset] + bytes([0] * size) + content[offset + size:]
+                    )
         return content
 
     @staticmethod
@@ -101,7 +122,9 @@ class Video:
         )["frames"]
         # frames.sort(key=lambda f: int(f['best_effort_timestamp']))
         for frame in frames:
-            frame["part_index"] = self.part_offsets.bisect_right(int(frame["pkt_pos"])) - 1
+            frame["part_index"] = (
+                self.part_offsets.bisect_right(int(frame["pkt_pos"])) - 1
+            )
 
         return frames
 
@@ -112,7 +135,18 @@ class Video:
                 f.write(ref.video_bytes)
             psnr_logs = (
                 subprocess.check_output(
-                    ["ffmpeg", "-i", "-", "-i", ref_path, "-lavfi", "psnr=stats_file=-", "-f", "null", "-"],
+                    [
+                        "ffmpeg",
+                        "-i",
+                        "-",
+                        "-i",
+                        ref_path,
+                        "-lavfi",
+                        "psnr=stats_file=-",
+                        "-f",
+                        "null",
+                        "-",
+                    ],
                     input=self.video_bytes,
                     stderr=sys.stdout,
                 )
@@ -170,7 +204,7 @@ class Video:
                         "-i",
                         ref_path,
                         "-lavfi",
-                        "[0][1]libvmaf=log_path=/dev/stdout:log_fmt=json:ssim=1:psnr=1:n_threads=14",
+                        "[0][1]libvmaf=log_path=/dev/stdout:log_fmt=json:feature='name=psnr|name=float_ssim':n_threads=14",
                         "-f",
                         "null",
                         "-",
@@ -196,14 +230,16 @@ class Video:
 
         return frames, stats
 
-    def get_samples(self, content: bytes, src_size: int):
+    @staticmethod
+    def get_samples(content: bytes, src_size: int):
         content += bytes([0] * (src_size - len(content)))
         with tempfile.TemporaryDirectory() as tmpdirname:
             seg_path = path.join(tmpdirname, "segment.mp4")
-            print("SEGMENT PATH : ", seg_path)
             with open(seg_path, "wb") as segment_file:
                 segment_file.write(content)
-            xml_str = subprocess.check_output(["MP4Box", seg_path, "-diso", "-std"], stderr=sys.stdout)
+            xml_str = subprocess.check_output(
+                ["MP4Box", seg_path, "-diso", "-std"], stderr=sys.stdout
+            )
         root = ET.fromstring(xml_str)
         for el in root.iter("*"):
             if el.tag.startswith("{"):
@@ -212,7 +248,9 @@ class Video:
             for an in el.attrib.keys():
                 if an.startswith("{"):
                     el.attrib[an.split("}", 1)[1]] = el.attrib.pop(an)
-        track_entries = root.findall("./MovieFragmentBox/TrackFragmentBox/TrackRunBox/TrackRunEntry")
+        track_entries = root.findall(
+            "./MovieFragmentBox/TrackFragmentBox/TrackRunBox/TrackRunEntry"
+        )
         sizes = [int(entry.attrib["Size"]) for entry in track_entries]
         mdat_start = 0
         for box in root:
@@ -226,7 +264,11 @@ class Video:
         return samples
 
     def get_all_details(self, *, ref):
-        details = {"frames": self.get_frames(), "part_offsets": list(self.part_offsets), "stats": {}}
+        details = {
+            "frames": self.get_frames(),
+            "part_offsets": list(self.part_offsets),
+            "stats": {},
+        }
         if ref is not None:
             details["quality"], qual_stats = self.get_quality_vmaf(ref)
             details["stats"].update(qual_stats)
@@ -258,6 +300,30 @@ class Video:
             with open(decoded_path, "rb") as f:
                 return bytes(f.read())
 
+    def get_raw(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            decoded_path = path.join(tmpdirname, "playback.obu")
+            subprocess.check_output(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-i",
+                    "-",
+                    "-err_detect",
+                    "ignore_err",
+                    "-c:v",
+                    "copy",
+                    "-copy_unknown",
+                    "-y",
+                    decoded_path,
+                ],
+                input=self.video_bytes,
+                stderr=sys.stdout,
+            )
+            with open(decoded_path, "rb") as f:
+                return bytes(f.read())
 
 class VideoInspector:
     app: Flask
@@ -284,4 +350,12 @@ class VideoInspector:
             video = Video(parts=parts)
             r = make_response(video.stream_playback())
             r.mimetype = "video/mp4"
+            return r
+
+        @self.app.get("/video-inspector/video/playback.bin")
+        def _get_video_playback_obu():
+            parts = list(filter(bool, request.args["urls"].split("\n")))
+            video = Video(parts=parts)
+            r = make_response(video.get_raw())
+            r.mimetype = "video/AV1"
             return r

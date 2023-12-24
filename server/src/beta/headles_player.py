@@ -102,6 +102,20 @@ class HeadlessPlayerApi:
                 job_ids.append(job.job_id)
             return jsonify({"message": f"Scheduled {len(run_ids)} run quality calculations", "job_ids": job_ids})
 
+        @self.app.get("/headless-player/runs/fill-frames")
+        def _get_fill_frames():
+            run_ids = request.args["runs"].split(",")
+            asyncio.set_event_loop(self.loop)
+            job_ids = []
+            for run_id in run_ids:
+                job = self.job_manager.schedule(
+                    PythonJob(
+                        config={"callback": Codec.fill_frames_job.__name__, "args": (run_id,), "kwargs": {}, "name": None}
+                    )
+                )
+                job_ids.append(job.job_id)
+            return jsonify({"message": f"Scheduled {len(run_ids)} frame filling jobs", "job_ids": job_ids})
+
         @self.app.route("/headless-player/runs/data")
         def _get_run_detail():
             runs = request.args["runs"].split(",")

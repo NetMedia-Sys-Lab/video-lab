@@ -153,7 +153,7 @@ export const FramesListComponent = (props: {
                 ></Table>
             </Tabs.TabPane>
             <Tabs.TabPane tab="Playback" key={"4"}>
-                <video src={activeKey === "4" ? videoPlaybackPath(videoPaths) : ""} controls />
+                <video src={activeKey === "4" ? videoPlaybackPath(videoPaths) : ""} controls style={{maxWidth: "100%"}}/>
             </Tabs.TabPane>
             <Tabs.TabPane tab="Quality" key={"5"}>
                 <table>

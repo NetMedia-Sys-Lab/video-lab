@@ -298,6 +298,7 @@ export const OptionEditorComponent = ({ name, options, selectedNames, onChange, 
                             height="100%"
                             language={editorType}
                             defaultValue={JSON.stringify(options[activeIndex], null, 4)}
+                            // @ts-ignore
                             onMount={(editor, monaco) => editorRef.current = editor}
                             onChange={saveValue}
                         />;

@@ -1,11 +1,13 @@
 from itertools import groupby
 import math
 from typing import List
+import json
 
 from src.util.ffmpeg import Ffmpeg
 
-FONTFILE="/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
-           
+config_file = open("config.json")
+CONFIG = json.load(config_file)
+config_file.close()
 
 class FfmpegCompose:
     videos: List[str]
@@ -18,7 +20,7 @@ class FfmpegCompose:
     
     @staticmethod
     def filter_drawstring(text, x, y, box=False):
-        ret  = f"drawtext=fontfile={FONTFILE}:text='{text}'"
+        ret  = f"drawtext=fontfile={CONFIG['fontFile']}:text='{text}'"
         ret += f":fontcolor=white:fontsize=24"
         if box:
             ret += f":box=1:boxcolor=black@0.5:boxborderw=5"
@@ -44,9 +46,9 @@ class FfmpegCompose:
             c = index % cols
             r = index // cols
             # filter += f";[vid]{self.filter_drawstring('ENDED')}[vid]"
-            filter += f";[vid]drawtext=fontfile={FONTFILE}:text='ENDED':fontcolor=white:fontsize=80:x={1920*c}+(1920-text_w)/2:y={1080*r}+(1080-text_h)/2[vid]"
+            filter += f";[vid]drawtext=fontfile={CONFIG['fontFile']}:text='ENDED':fontcolor=white:fontsize=80:x={1920*c}+(1920-text_w)/2:y={1080*r}+(1080-text_h)/2[vid]"
             filter += f";[vid][{index}:v]overlay={1920*c}:{1080*r}:eof_action=pass[vid]"
-            filter += f";[vid]drawtext=fontfile={FONTFILE}:text='{video.split('/')[-3]}':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:x={1920*c}+(1920-text_w)/2:y={1080*r}+405+(1080-text_h)/2[vid]"
+            filter += f";[vid]drawtext=fontfile={CONFIG['fontFile']}:text='{video.split('/')[-3]}':fontcolor=white:fontsize=24:box=1:boxcolor=black@0.5:boxborderw=5:x={1920*c}+(1920-text_w)/2:y={1080*r}+405+(1080-text_h)/2[vid]"
 
         cmd.extend(['-filter_complex', filter])
         cmd.extend(['-map', '[vid]', output_path])

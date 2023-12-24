@@ -216,6 +216,11 @@ export const calculateRunQuality = async (runIds: string[]) => {
     return await response.json();
 }
 
+export const fillFrames = async (runIds: string[]) => {
+    const response = await fetch(`${HeadlessPlayerApi}/runs/fill-frames?runs=${euc(runIds.join(","))}`);
+    return await response.json();
+}
+
 export const createTilesVideo = async (runIds: string[]) => {
     const response = await fetch(`${HeadlessPlayerApi}/runs/create-tiles?runs=${euc(runIds.join(","))}`);
     return await response.json();

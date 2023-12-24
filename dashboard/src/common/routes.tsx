@@ -7,6 +7,7 @@ import { ScriptsListPage } from "../pages/scripts/scripts-list.component";
 import { VideoInspectorPage } from "../pages/video-inspector/video-inspector.component";
 import { PageType } from "../types/page.type";
 import { ScriptEditorPage } from "../pages/scripts/script-editor.component";
+import { Av1AnalyzerPage } from "../pages/av1/av1-analyzer-page";
 
 const euc = encodeURIComponent;
 
@@ -17,5 +18,6 @@ export const Pages: PageType[] = [
     HeadlessPlayerComparePage,
     HeadlessPlayerSinglePage,
     ScriptsListPage,
-    ScriptEditorPage
+    ScriptEditorPage,
+    Av1AnalyzerPage
 ]

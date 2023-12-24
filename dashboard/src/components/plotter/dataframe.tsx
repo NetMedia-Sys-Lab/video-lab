@@ -113,6 +113,19 @@ export class DataFrame<T> extends Plottable<T> {
         });
     }
 
+    toPandasDF(ySuffix: string = "") {
+        const indexAcc = this.getIndexAcc();
+        const colAccs = this.getAllColAccs();
+        const pdDf = {
+            [this.indexField ?? "index"]: this.rows.map((r,i) => applyAcc(indexAcc, r, i))
+        };
+        for (const yField in colAccs)
+        {
+            pdDf[yField+ySuffix] = this.rows.map((r,i) => applyAcc(colAccs[yField], r, i))
+        }
+        return pdDf;
+    }
+
     toStep(field: keyof T) {
         const newRows: T[] = [];
         this.rows.forEach((row, i) => {
@@ -334,6 +347,14 @@ export class DataFrameGroups<T> extends Plottable<T> {
 
     toStep(indexField: keyof T) {
         return this.mapGroups((gid, df) => df.toStep(indexField));
+    }
+
+    toPandasDF() {
+        const pdDf = {};
+        this.forEach((gid, df) => {
+            Object.assign(pdDf, df.toPandasDF("_"+gid));
+        });
+        return pdDf;
     }
 
     forEach(callback: (gid: string, df: DataFrame<T>, dfIndex: number) => void) {

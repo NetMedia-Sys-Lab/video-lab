@@ -83,6 +83,7 @@ export type RunDataType = {
     num_stall: number
     num_quality_switches: number
     dur_stall: number
+    dur_idle: number
     states: [RunStateType]
     buffer_level: [{ level: number, time: number }]
     playback_start_time: number
@@ -102,6 +103,10 @@ export type RunDataType = {
     bandwidth_actual: [RunBwActualType]
     bandwidth_estimate: [RunBwEstimatedType]
     vmaf?: RunVmafType
+    micro_stalls?: {
+        groups: [number],
+        frame_nums: [number]
+    }
     // micro_stalls: RunMicroStallsType
 }
 

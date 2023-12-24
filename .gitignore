@@ -1,0 +1,5 @@
+server/saved_states/
+.vscode/
+*.pkl
+*.DS_Store
+server/config.json
